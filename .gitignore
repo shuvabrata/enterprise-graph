@@ -224,3 +224,4 @@ simulation/data/layer8_pull_requests.json
 
 # Sensitive configs
 .config*
+.python-version
