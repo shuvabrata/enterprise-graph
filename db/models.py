@@ -412,7 +412,8 @@ class Repository:
             language="Python",
             is_private=True,
             topics=["api", "gateway", "python"],
-            created_at="2023-11-10"
+            created_at="2023-11-10",
+            last_synced_at="2026-02-04T10:30:00Z"
         )
         
         # COLLABORATOR relationships with properties
@@ -433,6 +434,7 @@ class Repository:
     is_private: bool
     topics: list     # List of topic strings
     created_at: str  # ISO format string (YYYY-MM-DD)
+    last_synced_at: Optional[str] = None  # ISO format datetime string - tracks last successful sync
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
         """Convert to Neo4j properties."""
@@ -1217,6 +1219,10 @@ def merge_repository(session: Session, repository: Repository, relationships: Op
     # Only set created_at if it's not empty
     if props.get('created_at'):
         set_clauses.append("r.created_at = date($created_at)")
+    
+    # Only set last_synced_at if provided (for incremental sync tracking)
+    if props.get('last_synced_at'):
+        set_clauses.append("r.last_synced_at = datetime($last_synced_at)")
     
     # MERGE the Repository node
     query = f"""

@@ -7,9 +7,48 @@ from modules.github.new_user_handler import new_user_handler
 from modules.github.retry_with_backoff import retry_with_backoff
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from common.logger import logger, LogContext
+
+def get_last_synced_at(session, repo_id):
+    """Get the last_synced_at timestamp from Repository node.
+    
+    Args:
+        session: Neo4j session
+        repo_id: Repository node ID
+        
+    Returns:
+        datetime | None: Last sync timestamp or None if not found/never synced
+    """
+    query = """
+    MATCH (r:Repository {id: $repo_id})
+    RETURN r.last_synced_at as last_synced_at
+    """
+    result = session.run(query, repo_id=repo_id).single()
+    
+    if result and result['last_synced_at']:
+        # Neo4j datetime object - convert to Python datetime
+        return result['last_synced_at'].to_native()
+    return None
+
+
+def update_last_synced_at(session, repo_id):
+    """Update the last_synced_at timestamp on Repository node.
+    
+    Args:
+        session: Neo4j session
+        repo_id: Repository node ID
+    """
+    query = """
+    MATCH (r:Repository {id: $repo_id})
+    SET r.last_synced_at = datetime($timestamp)
+    RETURN r
+    """
+    timestamp = datetime.now(timezone.utc).isoformat()
+    session.run(query, repo_id=repo_id, timestamp=timestamp)
+    logger.info(f"    ✓ Updated last_synced_at to {timestamp}")
+
 
 def process_repo(repo, session):
     with LogContext(request_id=repo.full_name):
@@ -74,14 +113,21 @@ def process_repo_(repo, session):
     except Exception as e:
         logger.info(f"    Warning: Could not fetch branches - {str(e)}")
 
-    # Step 5: Process commits (only for default branch, within date limit)
+    # Step 5: Process commits (only for default branch, incremental sync)
     if default_branch_id:
         try:
-            # Get date limit from environment (default 60 days)
-            commit_days_limit = int(os.getenv('COMMIT_DAYS_LIMIT', '60'))
-            since_date = datetime.now() - timedelta(days=commit_days_limit)
-
-            logger.info(f"    Fetching commits from default branch '{repo.default_branch}' since {since_date.strftime('%Y-%m-%d')}...")
+            # Check last sync timestamp for incremental updates
+            last_synced = get_last_synced_at(session, repo_id)
+            
+            if last_synced:
+                # Use last sync timestamp for incremental updates
+                since_date = last_synced
+                logger.info(f"    Incremental sync: Fetching commits since last sync ({since_date.strftime('%Y-%m-%d %H:%M:%S')}...")
+            else:
+                # First run: use configurable lookback window
+                commit_days_limit = int(os.getenv('COMMIT_DAYS_LIMIT', '60'))
+                since_date = datetime.now() - timedelta(days=commit_days_limit)
+                logger.info(f"    First sync: Fetching commits from default branch '{repo.default_branch}' (last {commit_days_limit} days)...")
 
             # Fetch commits with retry logic
             commits = retry_with_backoff(
@@ -108,13 +154,21 @@ def process_repo_(repo, session):
     else:
         logger.info(f"    Warning: Default branch not found, skipping commit processing")
 
-    # Step 6: Process pull requests (all states, within date limit)
+    # Step 6: Process pull requests (all states, incremental sync)
     try:
-        # Get date limit from environment (default 60 days)
-        pr_days_limit = int(os.getenv('PULL_REQUEST_DAYS_LIMIT', '60'))
-        since_date = datetime.now() - timedelta(days=pr_days_limit)
-
-        logger.info(f"    Fetching pull requests since {since_date.strftime('%Y-%m-%d')}...")
+        # Check last sync timestamp for incremental updates
+        last_synced = get_last_synced_at(session, repo_id)
+        
+        if last_synced:
+            # Use last sync timestamp for incremental updates
+            # Convert to timezone-aware datetime if needed
+            since_date = last_synced if last_synced.tzinfo else last_synced.replace(tzinfo=timezone.utc)
+            logger.info(f"    Incremental sync: Fetching PRs updated since last sync ({since_date.strftime('%Y-%m-%d %H:%M:%S')}...")
+        else:
+            # First run: use configurable lookback window
+            pr_days_limit = int(os.getenv('PULL_REQUEST_DAYS_LIMIT', '60'))
+            since_date = datetime.now(timezone.utc) - timedelta(days=pr_days_limit)
+            logger.info(f"    First sync: Fetching pull requests (last {pr_days_limit} days)...")
 
         # Fetch all PRs (open, closed, merged) with retry logic
         # Note: PyGithub doesn't support 'since' parameter for PRs, so we'll fetch and filter
@@ -122,7 +176,7 @@ def process_repo_(repo, session):
             lambda: list(repo.get_pulls(state='all', sort='updated', direction='desc'))
         )
 
-        # Filter PRs by updated date
+        # Filter PRs by updated date (incremental sync)
         recent_prs = [pr for pr in all_prs if pr.updated_at >= since_date]
 
         logger.info(f"    Processing {len(recent_prs)} pull requests...")
@@ -142,3 +196,9 @@ def process_repo_(repo, session):
 
     except Exception as e:
         logger.info(f"    Warning: Could not fetch pull requests - {str(e)}")
+    
+    # Step 7: Update last_synced_at timestamp after successful processing
+    try:
+        update_last_synced_at(session, repo_id)
+    except Exception as e:
+        logger.info(f"    Warning: Could not update last_synced_at - {str(e)}")
