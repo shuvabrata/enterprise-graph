@@ -30,6 +30,7 @@ applyTo: '**/*.py'
 - Ensure lines do not exceed 79 characters.
 - Place function and class docstrings immediately after the `def` or `class` keyword.
 - Use blank lines to separate functions, classes, and code blocks where appropriate.
+- Always add imports at the top of file and keep the ordering as per pylint standards
 
 ## Edge Cases and Testing
 

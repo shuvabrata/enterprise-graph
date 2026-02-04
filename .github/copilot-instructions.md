@@ -99,11 +99,6 @@ relationships = [
 merge_issue(session, issue, relationships=relationships)
 ```
 
-### Logging ([common/logger.py](../common/logger.py))
-- Supports JSON and TEXT formats (set `LOG_FORMAT` env var)
-- Unicode symbols for log levels: ⚪ DEBUG, 🔵 INFO, 🟡 WARNING, 🔴 ERROR
-- Contextual logging with `project_id`, `user_id`, `request_id` via context vars
-
 ### Database Constraints & Indexes
 - **Constraints**: Created via `create_constraints(session)` - ensures unique IDs for all entity types
 - **Indexes**: 87 indexes across 7 priority levels ([design/INDEX_STRATEGY.md](../design/INDEX_STRATEGY.md))
