@@ -1200,6 +1200,9 @@ def merge_repository(session: Session, repository: Repository, relationships: Op
     """
     Merge a Repository node into Neo4j.
     
+    Uses ON CREATE SET for immutable properties (name, full_name, created_at)
+    and SET for mutable properties (url, language, is_private, topics, last_synced_at).
+    
     Args:
         session: Neo4j session
         repository: Repository dataclass instance
@@ -1207,27 +1210,31 @@ def merge_repository(session: Session, repository: Repository, relationships: Op
     """
     props = repository.to_neo4j_properties()
     
-    # Build SET clause dynamically based on available properties
-    set_clauses = [
+    # Build ON CREATE SET clause for immutable properties
+    create_clauses = [
         "r.name = $name",
-        "r.full_name = $full_name",
+        "r.full_name = $full_name"
+    ]
+    
+    if props.get('created_at'):
+        create_clauses.append("r.created_at = date($created_at)")
+    
+    # Build SET clause for mutable properties only
+    set_clauses = [
         "r.url = $url",
         "r.language = $language",
         "r.is_private = $is_private",
         "r.topics = $topics"
     ]
     
-    # Only set created_at if it's not empty
-    if props.get('created_at'):
-        set_clauses.append("r.created_at = date($created_at)")
-    
     # Only set last_synced_at if provided (for incremental sync tracking)
     if props.get('last_synced_at'):
         set_clauses.append("r.last_synced_at = datetime($last_synced_at)")
     
-    # MERGE the Repository node
+    # MERGE the Repository node with separate immutable and mutable properties
     query = f"""
     MERGE (r:Repository {{id: $id}})
+    ON CREATE SET {', '.join(create_clauses)}
     SET {', '.join(set_clauses)}
     RETURN r
     """
@@ -1248,6 +1255,9 @@ def merge_branch(session: Session, branch: Branch, relationships: Optional[List[
     """
     Merge a Branch node into Neo4j.
     
+    Uses ON CREATE SET for immutable properties (name, is_default, is_protected, is_external)
+    and SET for mutable properties (last_commit_sha, last_commit_timestamp, is_deleted, url).
+    
     Args:
         session: Neo4j session
         branch: Branch dataclass instance
@@ -1255,16 +1265,16 @@ def merge_branch(session: Session, branch: Branch, relationships: Optional[List[
     """
     props = branch.to_neo4j_properties()
     
-    # MERGE the Branch node
+    # MERGE the Branch node with separate immutable and mutable properties
     query = """
     MERGE (b:Branch {id: $id})
-    SET b.name = $name,
-        b.is_default = $is_default,
-        b.is_protected = $is_protected,
-        b.is_deleted = $is_deleted,
-        b.is_external = $is_external,
-        b.last_commit_sha = $last_commit_sha,
+    ON CREATE SET b.name = $name,
+                  b.is_default = $is_default,
+                  b.is_protected = $is_protected,
+                  b.is_external = $is_external
+    SET b.last_commit_sha = $last_commit_sha,
         b.last_commit_timestamp = datetime($last_commit_timestamp),
+        b.is_deleted = $is_deleted,
         b.url = $url
     RETURN b
     """
@@ -1365,6 +1375,9 @@ def merge_pull_request(session: Session, pull_request: PullRequest, relationship
     """
     Merge a PullRequest node into Neo4j.
     
+    Uses ON CREATE SET for immutable properties (number, created_at)
+    and SET for mutable properties (title, state, updated_at, merged_at, closed_at, etc.).
+    
     Args:
         session: Neo4j session
         pull_request: PullRequest dataclass instance
@@ -1372,14 +1385,14 @@ def merge_pull_request(session: Session, pull_request: PullRequest, relationship
     """
     props = pull_request.to_neo4j_properties()
     
-    # MERGE the PullRequest node
+    # MERGE the PullRequest node with separate immutable and mutable properties
     # Handle nullable datetime fields
     query = """
     MERGE (pr:PullRequest {id: $id})
-    SET pr.number = $number,
-        pr.title = $title,
+    ON CREATE SET pr.number = $number,
+                  pr.created_at = datetime($created_at)
+    SET pr.title = $title,
         pr.state = $state,
-        pr.created_at = datetime($created_at),
         pr.updated_at = datetime($updated_at),
         pr.merged_at = CASE WHEN $merged_at IS NOT NULL THEN datetime($merged_at) ELSE null END,
         pr.closed_at = CASE WHEN $closed_at IS NOT NULL THEN datetime($closed_at) ELSE null END,
