@@ -50,6 +50,50 @@ def update_last_synced_at(session, repo_id):
     logger.info(f"    ✓ Updated last_synced_at to {timestamp}")
 
 
+def get_fully_synced_commit_shas(session, repo_id):
+    """Get list of commit SHAs that are already fully processed in Neo4j.
+    
+    Args:
+        session: Neo4j session
+        repo_id: Repository node ID
+        
+    Returns:
+        set: Set of commit SHAs that have fully_synced=true
+    """
+    query = """
+    MATCH (c:Commit)-[:PART_OF]->(b:Branch)-[:BRANCH_OF]->(r:Repository {id: $repo_id})
+    WHERE c.fully_synced = true
+    RETURN collect(c.sha) as processed_shas
+    """
+    result = session.run(query, repo_id=repo_id).single()
+    
+    if result and result['processed_shas']:
+        return set(result['processed_shas'])
+    return set()
+
+
+def get_fully_synced_pr_numbers(session, repo_id):
+    """Get list of PR numbers for closed/merged PRs already in Neo4j.
+    
+    Args:
+        session: Neo4j session
+        repo_id: Repository node ID
+        
+    Returns:
+        set: Set of PR numbers for closed/merged PRs (won't change anymore)
+    """
+    query = """
+    MATCH (pr:PullRequest)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]->(r:Repository {id: $repo_id})
+    WHERE pr.state IN ['merged', 'closed']
+    RETURN collect(pr.number) as processed_pr_numbers
+    """
+    result = session.run(query, repo_id=repo_id).single()
+    
+    if result and result['processed_pr_numbers']:
+        return set(result['processed_pr_numbers'])
+    return set()
+
+
 def process_repo(repo, session):
     with LogContext(request_id=repo.full_name):
         return process_repo_(repo, session)
@@ -134,12 +178,21 @@ def process_repo_(repo, session):
                 lambda: list(repo.get_commits(sha=repo.default_branch, since=since_date))
             )
 
-            logger.info(f"    Processing {len(commits)} commits...")
+            # Step 5 optimization: Get already-processed commit SHAs from Neo4j
+            existing_shas = get_fully_synced_commit_shas(session, repo_id)
+            
+            # Filter out commits that are already fully processed
+            commits_to_process = [c for c in commits if c.sha not in existing_shas]
+            
+            if existing_shas:
+                logger.info(f"    Found {len(commits)} commits from GitHub, {len(existing_shas)} already processed, {len(commits_to_process)} new to process")
+            else:
+                logger.info(f"    Processing {len(commits_to_process)} commits...")
 
             commits_processed = 0
             commits_failed = 0
 
-            for commit in commits:
+            for commit in commits_to_process:
                 if new_commit_handler(session, repo.name, commit, default_branch_id, repo.owner.login, repo.default_branch):
                     commits_processed += 1
                 else:
@@ -179,12 +232,21 @@ def process_repo_(repo, session):
         # Filter PRs by updated date (incremental sync)
         recent_prs = [pr for pr in all_prs if pr.updated_at >= since_date]
 
-        logger.info(f"    Processing {len(recent_prs)} pull requests...")
+        # Step 5 optimization: Get already-processed closed/merged PR numbers from Neo4j
+        existing_pr_numbers = get_fully_synced_pr_numbers(session, repo_id)
+        
+        # Filter out PRs that are closed/merged and already in Neo4j (won't change)
+        prs_to_process = [pr for pr in recent_prs if pr.number not in existing_pr_numbers or pr.state == 'open']
+        
+        if existing_pr_numbers:
+            logger.info(f"    Found {len(recent_prs)} recent PRs, {len(existing_pr_numbers)} already processed (closed/merged), {len(prs_to_process)} to process")
+        else:
+            logger.info(f"    Processing {len(prs_to_process)} pull requests...")
 
         prs_processed = 0
         prs_failed = 0
 
-        for pr in recent_prs:
+        for pr in prs_to_process:
             if new_pull_request_handler(session, repo, pr, repo_id, repo.owner.login):
                 prs_processed += 1
             else:
