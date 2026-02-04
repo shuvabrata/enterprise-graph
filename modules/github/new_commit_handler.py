@@ -8,6 +8,51 @@ from datetime import datetime
 
 from common.logger import logger
 
+def is_commit_fully_synced(session, commit_id, commit_sha):
+    """
+    Check if a commit is already fully synced (has all MODIFIES relationships).
+    
+    Since commits are immutable, if a commit exists with fully_synced=true,
+    we can skip all processing including the expensive commit.files API call.
+    
+    Args:
+        session: Neo4j session
+        commit_id: Commit node ID
+        commit_sha: Commit SHA for logging
+        
+    Returns:
+        bool: True if commit is fully synced, False otherwise
+    """
+    query = """
+    MATCH (c:Commit {id: $commit_id})
+    WHERE c.fully_synced = true
+    RETURN c.fully_synced as is_synced
+    """
+    result = session.run(query, commit_id=commit_id).single()
+    
+    if result and result['is_synced']:
+        logger.debug(f"      Commit {commit_sha[:8]} is already fully synced, skipping")
+        return True
+    
+    return False
+
+
+def mark_commit_fully_synced(session, commit_id):
+    """
+    Mark a commit as fully synced after all MODIFIES relationships are created.
+    
+    Args:
+        session: Neo4j session
+        commit_id: Commit node ID
+    """
+    query = """
+    MATCH (c:Commit {id: $commit_id})
+    SET c.fully_synced = true
+    RETURN c
+    """
+    session.run(query, commit_id=commit_id)
+
+
 def get_or_create_commit_author(session, commit_author, repo_created_at):
     """
     Get or create Person and IdentityMapping for a commit author.
@@ -175,13 +220,20 @@ def new_commit_handler(session, repo_name, commit, branch_id, repo_owner=None, b
         commit_sha = commit.sha
         commit_id = f"commit_{repo_name}_{commit_sha[:8]}"
 
-        # Check if commit already exists
+        # Check if commit is already fully synced (optimization for subsequent runs)
+        # Since commits are immutable, if fully_synced=true, we can skip entirely
+        if is_commit_fully_synced(session, commit_id, commit_sha):
+            logger.info(f"      ✓ Commit {commit_sha[:8]} already fully synced, skipping")
+            return True
+
+        # Check if commit already exists (but not fully synced)
         check_query = "MATCH (c:Commit {id: $commit_id}) RETURN c.id LIMIT 1"
         result = session.run(check_query, commit_id=commit_id)
         if result.single():
-            # Commit already exists, skip
-            logger.info(f"      Commit {commit_sha[:8]} already exists, skipping.")
-            return True
+            # Commit exists but not fully synced - might need to process files
+            logger.info(f"      Commit {commit_sha[:8]} exists but not fully synced, processing files...")
+        else:
+            logger.debug(f"      Creating new commit {commit_sha[:8]}")
 
         # Extract commit information
         commit_message = commit.commit.message or "No message"
@@ -282,9 +334,15 @@ def new_commit_handler(session, repo_name, commit, branch_id, repo_owner=None, b
                         }
                     )
                     merge_relationship(session, modifies_rel)
+            
+            # Mark commit as fully synced after all files processed
+            mark_commit_fully_synced(session, commit_id)
+            logger.debug(f"      ✓ Marked commit {commit_sha[:8]} as fully synced")
+            
         except Exception as e:
             logger.info(f"      Warning: Could not fetch files for commit {commit_sha[:8]}: {str(e)}")
             logger.exception(e)
+            # Don't mark as fully_synced if file processing failed
 
         return True
 
