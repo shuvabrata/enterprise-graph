@@ -1,11 +1,10 @@
 import re
-from db.models import Commit, IdentityMapping, Person, Relationship, merge_commit, merge_identity_mapping, merge_person, merge_relationship
-from modules.github.new_file_handler import new_file_handler
-from modules.github.retry_with_backoff import retry_with_backoff
-
-
 from datetime import datetime
 
+from db.models import Commit, IdentityMapping, Relationship, merge_commit, merge_identity_mapping, merge_relationship
+from modules.github.new_file_handler import new_file_handler
+from modules.github.retry_with_backoff import retry_with_backoff
+from common.identity_resolver import get_or_create_person
 from common.logger import logger
 
 def is_commit_fully_synced(session, commit_id, commit_sha):
@@ -93,31 +92,22 @@ def get_or_create_commit_author(session, commit_author, repo_created_at):
             github_email = ""
             logger.debug(f"        Unknown author format, using fallback values")
         
-        # Create unique IDs
-        person_id = f"person_github_{github_login}"
-        identity_id = f"identity_github_{github_login}"
-        logger.debug(f"        Generated IDs: person_id='{person_id}', identity_id='{identity_id}'")
+        logger.debug(f"        Using identity resolver for: {github_login}, {github_email}")
         
-        # Check if person already exists
-        check_query = "MATCH (p:Person {id: $person_id}) RETURN p.id as id LIMIT 1"
-        result = session.run(check_query, person_id=person_id)
-        if result.single():
-            # Person already exists, return the ID
-            return person_id
+        # Use identity resolver for proper email-based deduplication
+        # Convert empty string email to None for proper NULL handling
+        email = github_email if github_email else None
         
-        # Create Person node
-        person = Person(
-            id=person_id,
+        person_id, is_new = get_or_create_person(
+            session,
+            email=email,
             name=github_name,
-            email=github_email,
-            title="",
-            role="",
-            seniority="",
-            hire_date="",
-            is_manager=False
+            provider="github",
+            external_id=github_login
         )
         
-        # Create IdentityMapping node
+        # Create IdentityMapping node for GitHub
+        identity_id = f"identity_github_{github_login}"
         identity = IdentityMapping(
             id=identity_id,
             provider="GitHub",
@@ -125,7 +115,7 @@ def get_or_create_commit_author(session, commit_author, repo_created_at):
             email=github_email
         )
         
-        # Create MAPS_TO relationship
+        # Create MAPS_TO relationship from IdentityMapping to Person
         logger.debug(f"        Creating MAPS_TO relationship: {identity_id} -> {person_id}")
         maps_to_relationship = Relationship(
             type="MAPS_TO",
@@ -135,12 +125,15 @@ def get_or_create_commit_author(session, commit_author, repo_created_at):
             to_type="Person"
         )
         
-        # Merge into Neo4j
-        logger.debug(f"        Merging Person and IdentityMapping nodes")
-        merge_person(session, person)
+        # Merge IdentityMapping node with MAPS_TO relationship
+        logger.debug(f"        Merging IdentityMapping node with MAPS_TO relationship")
         merge_identity_mapping(session, identity, relationships=[maps_to_relationship])
         
-        logger.info(f"      ✓ Created commit author: {github_name} ({github_login})")
+        if is_new:
+            logger.info(f"      ✓ Created commit author: {github_name} ({github_login})")
+        else:
+            logger.debug(f"        Reused existing person: {person_id}")
+        
         logger.debug(f"        Returning person_id: {person_id}")
         
         return person_id

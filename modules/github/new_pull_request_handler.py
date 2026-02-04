@@ -1,7 +1,8 @@
-from db.models import PullRequest, Branch, Relationship, merge_pull_request, merge_branch, merge_relationship
-from modules.github.retry_with_backoff import retry_with_backoff
 from datetime import datetime
 
+from db.models import PullRequest, Branch, Relationship, IdentityMapping, merge_pull_request, merge_branch, merge_relationship, merge_identity_mapping
+from modules.github.retry_with_backoff import retry_with_backoff
+from common.identity_resolver import get_or_create_person
 from common.logger import logger
 
 def create_or_get_external_branch(session, repo_name, head_ref, pr_number):
@@ -101,44 +102,30 @@ def get_or_create_pr_author(session, pr_user):
         if pr_user is None:
             return "person_github_unknown"
         
-        github_login = pr_user.login
-        person_id = f"person_github_{github_login}"
-        
-        # Check if person already exists
-        check_query = "MATCH (p:Person {id: $person_id}) RETURN p.id as id LIMIT 1"
-        result = session.run(check_query, person_id=person_id)
-        if result.single():
-            return person_id
-        
-        # Import here to avoid circular dependency
-        from db.models import Person, IdentityMapping, merge_person, merge_identity_mapping
-        
         # Get user details
+        github_login = pr_user.login
         github_name = pr_user.name if hasattr(pr_user, 'name') and pr_user.name else github_login
-        github_email = pr_user.email if hasattr(pr_user, 'email') and pr_user.email else ""
+        github_email = pr_user.email if hasattr(pr_user, 'email') and pr_user.email else None
         
-        # Create Person node
-        person = Person(
-            id=person_id,
-            name=github_name,
+        # Use identity resolver for proper email-based deduplication
+        person_id, is_new = get_or_create_person(
+            session,
             email=github_email,
-            title="",
-            role="",
-            seniority="",
-            hire_date="",
-            is_manager=False
+            name=github_name,
+            provider="github",
+            external_id=github_login
         )
         
-        # Create IdentityMapping node
+        # Create IdentityMapping node for GitHub
         identity_id = f"identity_github_{github_login}"
         identity = IdentityMapping(
             id=identity_id,
             provider="GitHub",
             username=github_login,
-            email=github_email
+            email=github_email if github_email else ""
         )
         
-        # Create MAPS_TO relationship
+        # Create MAPS_TO relationship from IdentityMapping to Person
         maps_to_relationship = Relationship(
             type="MAPS_TO",
             from_id=identity.id,
@@ -147,8 +134,7 @@ def get_or_create_pr_author(session, pr_user):
             to_type="Person"
         )
         
-        # Merge into Neo4j
-        merge_person(session, person)
+        # Merge IdentityMapping node with MAPS_TO relationship
         merge_identity_mapping(session, identity, relationships=[maps_to_relationship])
         
         return person_id
