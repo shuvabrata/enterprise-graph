@@ -11,6 +11,44 @@ from datetime import datetime, timedelta, timezone
 
 from common.logger import logger, LogContext
 
+
+def get_collaborators_needing_refresh(session, collaborators, refresh_days=7):
+    """Filter collaborators to only those needing refresh based on last_updated_at.
+    
+    Args:
+        session: Neo4j session
+        collaborators: List of GitHub collaborator objects
+        refresh_days: Number of days before refreshing identity data (default 7)
+        
+    Returns:
+        tuple: (collaborators_to_process, skip_count)
+            - collaborators_to_process: List of collaborators that need processing
+            - skip_count: Number of collaborators skipped due to recent update
+    """
+    if not collaborators:
+        return [], 0
+    
+    # Extract usernames for batch query
+    usernames = [c.login for c in collaborators]
+    
+    # Query Neo4j for IdentityMapping nodes with recent updates
+    query = """
+    UNWIND $usernames as username
+    MATCH (i:IdentityMapping {provider: 'GitHub', username: username})
+    WHERE i.last_updated_at IS NOT NULL
+      AND i.last_updated_at >= datetime() - duration({days: $refresh_days})
+    RETURN collect(i.username) as recent_usernames
+    """
+    
+    result = session.run(query, usernames=usernames, refresh_days=refresh_days).single()
+    recent_usernames = set(result['recent_usernames']) if result and result['recent_usernames'] else set()
+    
+    # Filter collaborators
+    collaborators_to_process = [c for c in collaborators if c.login not in recent_usernames]
+    skip_count = len(collaborators) - len(collaborators_to_process)
+    
+    return collaborators_to_process, skip_count
+
 def get_last_synced_at(session, repo_id):
     """Get the last_synced_at timestamp from Repository node.
     
@@ -116,20 +154,32 @@ def process_repo_(repo, session):
         # Convert to list for bulk processing
         collaborator_list = [collab for collab in collaborators if collab.type == 'User']
         
-        # Get bulk processing threshold from environment (default 100)
-        bulk_threshold = int(os.getenv('BULK_PROCESSING_THRESHOLD', '100'))
-        batch_size = int(os.getenv('COLLABORATOR_BATCH_SIZE', '50'))
+        # Optimization: Filter collaborators to only those needing refresh
+        refresh_days = int(os.getenv('IDENTITY_REFRESH_DAYS', '7'))
+        collaborators_to_process, skip_count = get_collaborators_needing_refresh(
+            session, collaborator_list, refresh_days
+        )
         
-        if len(collaborator_list) > bulk_threshold:
-            # Use bulk processing for large numbers of collaborators
-            logger.info(f"    Using bulk processing for {len(collaborator_list)} collaborators (threshold: {bulk_threshold})...")
-            from modules.github.bulk_user_handler import bulk_user_handler
-            bulk_user_handler(session, collaborator_list, repo_id, repo_created_at, batch_size)
+        if skip_count > 0:
+            logger.info(f"    Skipping {skip_count} collaborators (updated within last {refresh_days} days)")
+        
+        if not collaborators_to_process:
+            logger.info(f"    All collaborators are up-to-date, skipping processing")
         else:
-            # Use individual processing for smaller numbers
-            logger.info(f"    Processing {len(collaborator_list)} collaborators individually...")
-            for collab in collaborator_list:
-                new_user_handler(session, collab, repo_id, repo_created_at)
+            # Get bulk processing threshold from environment (default 100)
+            bulk_threshold = int(os.getenv('BULK_PROCESSING_THRESHOLD', '100'))
+            batch_size = int(os.getenv('COLLABORATOR_BATCH_SIZE', '50'))
+            
+            if len(collaborators_to_process) > bulk_threshold:
+                # Use bulk processing for large numbers of collaborators
+                logger.info(f"    Using bulk processing for {len(collaborators_to_process)} collaborators (threshold: {bulk_threshold})...")
+                from modules.github.bulk_user_handler import bulk_user_handler
+                bulk_user_handler(session, collaborators_to_process, repo_id, repo_created_at, batch_size)
+            else:
+                # Use individual processing for smaller numbers
+                logger.info(f"    Processing {len(collaborators_to_process)} collaborators individually...")
+                for collab in collaborators_to_process:
+                    new_user_handler(session, collab, repo_id, repo_created_at)
     except Exception as e:
         # Collaborators might not be accessible for certain repos
         logger.info(f"    Warning: Could not fetch collaborators - {str(e)}")

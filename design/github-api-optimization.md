@@ -42,6 +42,19 @@ RETURN collect(c.sha) as processed_shas
 
 **Impact**: Additional 5-10% reduction by avoiding redundant checks
 
+### 5. Collaborator Identity Caching
+Skip re-processing collaborators whose IdentityMapping was updated recently. Track `last_updated_at` timestamp and skip if within refresh window (default: 7 days).
+
+```cypher
+MATCH (i:IdentityMapping {provider: 'GitHub', username: $username})
+WHERE i.last_updated_at >= datetime() - duration({days: 7})
+RETURN i.username
+```
+
+**Impact**: 99% reduction when scanning multiple repos with common collaborators (e.g., 100 repos × 50 collaborators = 5,000 → 50 API calls)
+
+**Rationale**: In large orgs, most repos share the same collaborators. No need to re-fetch unchanged user data.
+
 ## GraphQL Limitation (Step 4 — Not Implemented)
 
 **Attempted**: Batch-fetch file metadata using GraphQL to reduce 500 sequential REST calls to ~10 batch queries.

@@ -85,7 +85,8 @@ class IdentityMapping:
             id="identity_github_alice",
             provider="GitHub",
             username="alicej",
-            email="alice@company.com"
+            email="alice@company.com",
+            last_updated_at="2026-02-04T10:30:00Z"
         )
         
         rel = Relationship(
@@ -102,6 +103,7 @@ class IdentityMapping:
     provider: str
     username: str
     email: str
+    last_updated_at: Optional[str] = None  # ISO format datetime string - tracks when identity was last refreshed
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
         """Convert to Neo4j properties."""
@@ -958,12 +960,21 @@ def merge_identity_mapping(session: Session, identity: IdentityMapping, relation
     """
     props = identity.to_neo4j_properties()
     
+    # Build SET clause dynamically based on available properties
+    set_clauses = [
+        "i.provider = $provider",
+        "i.username = $username",
+        "i.email = $email"
+    ]
+    
+    # Only set last_updated_at if provided
+    if props.get('last_updated_at'):
+        set_clauses.append("i.last_updated_at = datetime($last_updated_at)")
+    
     # MERGE the IdentityMapping node
-    query = """
-    MERGE (i:IdentityMapping {id: $id})
-    SET i.provider = $provider,
-        i.username = $username,
-        i.email = $email
+    query = f"""
+    MERGE (i:IdentityMapping {{id: $id}})
+    SET {', '.join(set_clauses)}
     RETURN i
     """
     

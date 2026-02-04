@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from db.models import IdentityMapping, Relationship, merge_identity_mapping, merge_relationship
 from modules.github.map_permissions_to_general import map_permissions_to_general
 from common.identity_resolver import get_or_create_person
@@ -37,14 +39,15 @@ def new_user_handler(session, collaborator, repo_id, repo_created_at):
         
         logger.debug(f"      {'Created new' if is_new else 'Found existing'} Person: {person_id}")
 
-        # Create IdentityMapping node for GitHub
+        # Create IdentityMapping node for GitHub with timestamp
         identity_id = f"identity_github_{github_login}"
         logger.debug(f"      Creating IdentityMapping node with ID: {identity_id}")
         identity = IdentityMapping(
             id=identity_id,
             provider="GitHub",
             username=github_login,
-            email=github_email
+            email=github_email,
+            last_updated_at=datetime.now(timezone.utc).isoformat()
         )
 
         # Create MAPS_TO relationship from IdentityMapping to Person

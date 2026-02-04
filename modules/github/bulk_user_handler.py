@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from db.models import IdentityMapping, Person, Relationship, merge_person, merge_identity_mapping, merge_relationship
 from modules.github.map_permissions_to_general import map_permissions_to_general
 import time
@@ -73,12 +75,13 @@ def bulk_user_handler(session, collaborators, repo_id, repo_created_at, batch_si
                     persons.append(person)
                     logger.debug(f"          Created Person node: {person_id}")
                     
-                    # Create IdentityMapping node
+                    # Create IdentityMapping node with timestamp
                     identity = IdentityMapping(
                         id=identity_id,
                         provider="GitHub",
                         username=github_login,
-                        email=github_email
+                        email=github_email,
+                        last_updated_at=datetime.now(timezone.utc).isoformat()
                     )
                     identities.append(identity)
                     
@@ -190,7 +193,10 @@ def _bulk_merge_nodes(session, persons, identities, relationships):
     MERGE (i:IdentityMapping {id: identity_data.id})
     SET i.provider = identity_data.provider,
         i.username = identity_data.username,
-        i.email = identity_data.email
+        i.email = identity_data.email,
+        i.last_updated_at = CASE WHEN identity_data.last_updated_at IS NOT NULL 
+                                  THEN datetime(identity_data.last_updated_at) 
+                                  ELSE null END
     """
     
     relationship_query = """
