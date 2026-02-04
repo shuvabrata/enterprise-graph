@@ -39,7 +39,6 @@ def bulk_user_handler(session, collaborators, repo_id, repo_created_at, batch_si
             relationships = []
             
             for collaborator in batch:
-                logger.info(".", end="", flush=True)
                 try:
                     # Extract user information - avoid API calls for optional fields
                     github_login = collaborator.login
