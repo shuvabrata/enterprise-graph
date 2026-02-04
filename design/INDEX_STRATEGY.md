@@ -38,7 +38,7 @@ Essential for filtering queries:
 Critical for timeline queries and trend analysis:
 - **Person**: hire_date
 - **Work Items**: start_date, due_date, created_at (for Initiatives, Epics, Issues, Sprints)
-- **Git**: Repository.created_at, Branch (last_commit_timestamp, created_at), Commit.timestamp, File.created_at
+- **Git**: Repository.created_at, Branch.last_commit_timestamp, Commit.timestamp, File.created_at
 - **Pull Request**: created_at, merged_at, updated_at, closed_at
 
 ### Priority 4: Composite Indexes (Medium) - 5 indexes

@@ -3,9 +3,10 @@ Load Git Branches into Neo4j.
 This loads Layer 6 of the graph: Branch nodes and BRANCH_OF relationships.
 
 Key differences from previous layers:
-- Branch nodes have datetime fields (last_commit_timestamp, created_at)
+- Branch nodes have datetime field (last_commit_timestamp)
 - BRANCH_OF relationships are simple (no properties)
 - Follows the same pattern: merge nodes one at a time, caller may/may not have relationships
+- Note: We do not track branch created_at due to performance overhead (see new_branch_handler.py)
 """
 
 import json
@@ -45,8 +46,7 @@ def load_branches_to_neo4j():
                     is_protected=branch_data['is_protected'],
                     is_deleted=branch_data['is_deleted'],
                     last_commit_sha=branch_data['last_commit_sha'],
-                    last_commit_timestamp=branch_data['last_commit_timestamp'],
-                    created_at=branch_data['created_at']
+                    last_commit_timestamp=branch_data['last_commit_timestamp']
                 )
                 
                 # Merge branch (without relationships for now)

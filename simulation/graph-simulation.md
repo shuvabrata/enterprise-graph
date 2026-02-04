@@ -367,8 +367,13 @@ Properties:
   - is_deleted: boolean (merged and deleted)
   - last_commit_sha: string (most recent commit)
   - last_commit_timestamp: timestamp
-  - created_at: timestamp
 ```
+
+**Note on Branch Creation Time**: We do NOT track `created_at` for branches because:
+1. GitHub API does not provide direct access to branch ref creation time
+2. Finding it requires iterating through ALL commits on the branch (extremely slow)
+3. For main branches with 10K+ commits, this takes minutes per branch
+4. `last_commit_timestamp` is sufficient for identifying stale branches
 
 #### Relationships (Directly Discoverable)
 - `BRANCH_OF`: Branch → Repository

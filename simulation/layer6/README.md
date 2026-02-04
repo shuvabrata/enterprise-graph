@@ -35,7 +35,10 @@ This layer creates branch nodes representing Git branches in each repository.
 | is_deleted | boolean | Branch was merged and deleted |
 | last_commit_sha | string | SHA of most recent commit |
 | last_commit_timestamp | datetime | When last commit was made |
-| created_at | datetime | When branch was created |
+
+**Note**: We do not track `created_at` for branches due to GitHub API limitations.
+Finding the branch creation time requires iterating through all commits on the branch,
+which takes minutes for long-lived branches. Use `last_commit_timestamp` instead.
 
 ## Usage
 

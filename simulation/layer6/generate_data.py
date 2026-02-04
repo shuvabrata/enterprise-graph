@@ -41,7 +41,6 @@ def generate_branches_for_repo(repo: Dict, epics: List[Dict]) -> List[Dict]:
         "is_deleted": False,
         "last_commit_sha": f"abc{random.randint(1000, 9999)}def",
         "last_commit_timestamp": datetime.now().isoformat(),
-        "created_at": repo['created_at'],
         "repository_id": repo_id
     }
     branches.append(main_branch)
@@ -87,7 +86,6 @@ def generate_branches_for_repo(repo: Dict, epics: List[Dict]) -> List[Dict]:
             days_ago = random.randint(1, 45)
         
         last_commit_time = datetime.now() - timedelta(days=days_ago)
-        created_time = last_commit_time - timedelta(days=random.randint(5, 15))
         
         branch = {
             "id": f"branch_{repo_id}_{i}",
@@ -97,7 +95,6 @@ def generate_branches_for_repo(repo: Dict, epics: List[Dict]) -> List[Dict]:
             "is_deleted": is_deleted,
             "last_commit_sha": f"xyz{random.randint(1000, 9999)}abc",
             "last_commit_timestamp": last_commit_time.isoformat(),
-            "created_at": created_time.isoformat(),
             "repository_id": repo_id
         }
         branches.append(branch)

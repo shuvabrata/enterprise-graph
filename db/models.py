@@ -457,6 +457,12 @@ class Repository:
 class Branch:
     """Branch node representing a Git branch.
     
+    Note: We do not track branch creation timestamp (created_at) because:
+    1. GitHub API does not provide direct access to branch ref creation time
+    2. Finding it requires iterating through ALL commits on the branch (extremely slow)
+    3. For main branches with 10K+ commits, this takes minutes per branch
+    4. last_commit_timestamp is sufficient for identifying stale branches
+    
     Example:
         branch = Branch(
             id="branch_main_repo_api",
@@ -466,8 +472,7 @@ class Branch:
             is_deleted=False,
             is_external=False,
             last_commit_sha="abc123def",
-            last_commit_timestamp="2026-01-17T10:30:00",
-            created_at="2024-01-01T00:00:00"
+            last_commit_timestamp="2026-01-17T10:30:00"
         )
         
         # BRANCH_OF relationship
@@ -487,7 +492,6 @@ class Branch:
     is_external: bool           # True if branch is from a fork
     last_commit_sha: str
     last_commit_timestamp: str  # ISO format datetime string
-    created_at: str             # ISO format datetime string
     url: Optional[str] = None   # GitHub URL to view branch in browser
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
@@ -506,7 +510,6 @@ class Branch:
         print(f"  Is External:          {self.is_external}")
         print(f"  Last Commit SHA:      {self.last_commit_sha[:10]}..." if len(self.last_commit_sha) > 10 else f"  Last Commit SHA:      {self.last_commit_sha}")
         print(f"  Last Commit Time:     {self.last_commit_timestamp}")
-        print(f"  Created At:           {self.created_at}")
         print(f"{'='*60}\n")
 
 
@@ -1255,7 +1258,6 @@ def merge_branch(session: Session, branch: Branch, relationships: Optional[List[
         b.is_external = $is_external,
         b.last_commit_sha = $last_commit_sha,
         b.last_commit_timestamp = datetime($last_commit_timestamp),
-        b.created_at = datetime($created_at),
         b.url = $url
     RETURN b
     """
