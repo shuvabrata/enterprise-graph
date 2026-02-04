@@ -97,7 +97,7 @@ def bulk_user_handler(session, collaborators, repo_id, repo_created_at, batch_si
                         # Try to get permissions if available, otherwise use default
                         permissions = getattr(collaborator, 'permissions', None)
                         if permissions:
-                            logger.debug(f"          Found permissions for {github_login}: {permissions.__dict__}")
+                            logger.debug(f"          Found permissions for {github_login}: admin={getattr(permissions, 'admin', False)}, maintain={getattr(permissions, 'maintain', False)}, push={getattr(permissions, 'push', False)}, pull={getattr(permissions, 'pull', False)}")
                             permission = map_permissions_to_general(permissions.__dict__)
                             role = None
                             if getattr(permissions, 'admin', False):
