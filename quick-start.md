@@ -1,4 +1,4 @@
-# project-graph
+# enterprise-graph
 
 A Neo4j graph database project with a simple movie database example.
 

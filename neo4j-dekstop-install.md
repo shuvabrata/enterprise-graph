@@ -106,7 +106,7 @@ Password: <your-password>
 Since both use the same ports, your scripts always connect to `bolt://localhost:7687`:
 
 ```bash
-cd /home/shuva/github/shuvabrata/project-graph/simulation
+cd /home/shuva/github/shuvabrata/enterprise-graph/simulation
 
 # Load all layers (works for whichever instance is running)
 ./reload_all.sh
