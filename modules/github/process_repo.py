@@ -65,6 +65,7 @@ def process_repo_(repo, session):
     default_branch_id = None
     try:
         branches = repo.get_branches()
+        logger.info(f"    Found {branches.totalCount} branches...")
         for branch in branches:
             new_branch_handler(session, repo, branch, repo_id, repo.owner.login)
             # Track default branch ID for commit processing

@@ -43,7 +43,7 @@ def new_repo_handler(session, repo):
         merge_repository(session, repository)
         repository.print_cli()
         
-        logger.info(f"    ✓ Successfully processed repository: {repo.name}")
+        logger.info(f"    ✓ Successfully merged repository node: {repo.name}")
         logger.debug(f"      Returning: repo_id='{repo_id}', repo_created_at='{repo_created_at}'")
         return repo_id, repo_created_at
 
