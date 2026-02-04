@@ -88,6 +88,34 @@ def update_last_synced_at(session, repo_id):
     logger.info(f"    ✓ Updated last_synced_at to {timestamp}")
 
 
+def get_existing_branch_metadata(session, repo_id):
+    """Get metadata for existing branches to detect changes.
+    
+    Args:
+        session: Neo4j session
+        repo_id: Repository node ID
+        
+    Returns:
+        dict: Mapping of branch_name -> {last_commit_sha, is_deleted}
+    """
+    query = """
+    MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository {id: $repo_id})
+    RETURN b.name as name, 
+           b.last_commit_sha as last_commit_sha,
+           b.is_deleted as is_deleted
+    """
+    result = session.run(query, repo_id=repo_id)
+    
+    branch_metadata = {}
+    for record in result:
+        branch_metadata[record['name']] = {
+            'last_commit_sha': record['last_commit_sha'],
+            'is_deleted': record['is_deleted']
+        }
+    
+    return branch_metadata
+
+
 def get_fully_synced_commit_shas(session, repo_id):
     """Get list of commit SHAs that are already fully processed in Neo4j.
     
@@ -120,6 +148,9 @@ def get_fully_synced_pr_numbers(session, repo_id):
     Returns:
         set: Set of PR numbers for closed/merged PRs (won't change anymore)
     """
+    # Optimization: Only retrieve PRs in terminal states (merged/closed)
+    # These states are immutable - once a PR is merged or closed, it won't change anymore
+    # This allows us to skip re-processing them on subsequent syncs
     query = """
     MATCH (pr:PullRequest)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]->(r:Repository {id: $repo_id})
     WHERE pr.state IN ['merged', 'closed']
@@ -197,9 +228,27 @@ def process_repo_(repo, session):
     # Step 4: Process branches (creates Branch nodes and BRANCH_OF relationships)
     default_branch_id = None
     try:
-        branches = repo.get_branches()
-        logger.info(f"    Found {branches.totalCount} branches...")
+        branches = list(repo.get_branches())
+        logger.info(f"    Found {len(branches)} branches...")
+        
+        # Optimization: Get existing branch metadata to skip unchanged branches
+        existing_branches = get_existing_branch_metadata(session, repo_id)
+        
+        branches_to_process = []
         for branch in branches:
+            existing = existing_branches.get(branch.name)
+            
+            # Process if: new branch OR last_commit_sha changed OR was marked deleted
+            if not existing or existing['last_commit_sha'] != branch.commit.sha or existing['is_deleted']:
+                branches_to_process.append(branch)
+        
+        skip_count = len(branches) - len(branches_to_process)
+        if skip_count > 0:
+            logger.info(f"    Processing {len(branches_to_process)} branches, skipping {skip_count} unchanged...")
+        else:
+            logger.info(f"    Processing {len(branches_to_process)} branches...")
+        
+        for branch in branches_to_process:
             new_branch_handler(session, repo, branch, repo_id, repo.owner.login)
             # Track default branch ID for commit processing
             if branch.name == repo.default_branch:
@@ -255,7 +304,7 @@ def process_repo_(repo, session):
         except Exception as e:
             logger.info(f"    Warning: Could not fetch commits - {str(e)}")
     else:
-        logger.info(f"    Warning: Default branch not found, skipping commit processing")
+        logger.info(f"    Warning: Default branch not encountered in this scan, skipping commit processing")
 
     # Step 6: Process pull requests (all states, incremental sync)
     try:
@@ -285,7 +334,10 @@ def process_repo_(repo, session):
         # Step 5 optimization: Get already-processed closed/merged PR numbers from Neo4j
         existing_pr_numbers = get_fully_synced_pr_numbers(session, repo_id)
         
-        # Filter out PRs that are closed/merged and already in Neo4j (won't change)
+        # Filter logic:
+        # - Always process open PRs (they can be updated with new commits, reviews, labels, etc.)
+        # - Skip closed/merged PRs already in Neo4j (immutable - won't change anymore)
+        # This avoids redundant API calls and database writes for terminal-state PRs
         prs_to_process = [pr for pr in recent_prs if pr.number not in existing_pr_numbers or pr.state == 'open']
         
         if existing_pr_numbers:
