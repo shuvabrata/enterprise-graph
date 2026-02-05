@@ -135,6 +135,9 @@ def process_repo(repo, session):
 
 def process_repo_(repo, session):
     """Process repository: create repo node, collaborators, teams, branches, and commits in Neo4j."""
+    # Session-level cache to prevent duplicate user processing within same transaction
+    processed_users_cache = {}
+    
     # Step 1: Create Repository node FIRST
     repo_id, repo_created_at = new_repo_handler(session, repo)
 
@@ -176,7 +179,7 @@ def process_repo_(repo, session):
                 # Use individual processing for smaller numbers
                 logger.info(f"    Processing {len(collaborators_to_process)} collaborators individually...")
                 for collab in collaborators_to_process:
-                    new_user_handler(session, collab, repo_id, repo_created_at)
+                    new_user_handler(session, collab, repo_id, repo_created_at, processed_users_cache)
     except Exception as e:
         # Collaborators might not be accessible for certain repos
         logger.info(f"    Warning: Could not fetch collaborators - {str(e)}")
@@ -185,8 +188,8 @@ def process_repo_(repo, session):
     try:
         teams = repo.get_teams()
         for team in teams:
-            # Create Team node and COLLABORATOR relationship
-            new_team_handler(session, team, repo_id, repo_created_at)
+            # Create Team node and COLLABORATOR relationship (pass cache to prevent duplicate user processing)
+            new_team_handler(session, team, repo_id, repo_created_at, processed_users_cache)
     except Exception as e:
         # Teams might not be accessible for personal repos or due to permissions
         logger.info(f"    Warning: Could not fetch teams - {str(e)}")

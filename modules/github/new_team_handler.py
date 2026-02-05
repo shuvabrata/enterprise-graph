@@ -4,7 +4,7 @@ from db.models import Relationship, Team, merge_relationship, merge_team
 from modules.github.process_github_user import process_github_user, get_users_needing_refresh
 from common.logger import logger
 
-def new_team_handler(session, team, repo_id, repo_created_at):
+def new_team_handler(session, team, repo_id, repo_created_at, processed_users_cache=None):
     """Handle a new team by creating Team node and COLLABORATOR relationship to repository.
 
     Args:
@@ -12,6 +12,7 @@ def new_team_handler(session, team, repo_id, repo_created_at):
         team: GitHub team object with attributes like name, slug, permission
         repo_id: Repository ID to create relationship with
         repo_created_at: Repository creation date for relationship timestamp
+        processed_users_cache: Optional dict to prevent duplicate user processing in same session
     """
     try:
         # Extract available information from team
@@ -95,7 +96,7 @@ def new_team_handler(session, team, repo_id, repo_created_at):
                 
                 for member in members_to_process:
                     # Process GitHub user: create/update Person and IdentityMapping
-                    person_id = process_github_user(session, member)
+                    person_id = process_github_user(session, member, processed_users_cache)
                     
                     if person_id:
                         # Create MEMBER_OF relationship from Person to Team

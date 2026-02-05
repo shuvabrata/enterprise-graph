@@ -50,7 +50,7 @@ def get_users_needing_refresh(session, github_users, refresh_days=7):
     return users_to_process, skip_count
 
 
-def process_github_user(session, github_user):
+def process_github_user(session, github_user, processed_users_cache=None):
     """Process a GitHub user: create/update Person and IdentityMapping nodes.
     
     This function handles the common identity resolution pattern used across
@@ -59,13 +59,20 @@ def process_github_user(session, github_user):
     Args:
         session: Neo4j session
         github_user: GitHub user object with attributes like login, name, email
+        processed_users_cache: Optional dict to track processed users within transaction
+                               (prevents duplicate processing in same session)
         
     Returns:
         str | None: person_id if successful, None if failed
     """
     try:
-        # Extract available information from GitHub user
+        # Check cache to avoid processing same user twice in same session
         github_login = github_user.login
+        if processed_users_cache is not None and github_login in processed_users_cache:
+            logger.debug(f"      Skipping {github_login} (already processed in this session)")
+            return processed_users_cache[github_login]
+        
+        # Extract available information from GitHub user
         logger.debug(f"      Processing GitHub user: {github_login}")
         
         github_name = github_user.name if hasattr(github_user, 'name') and github_user.name else github_login
@@ -114,6 +121,10 @@ def process_github_user(session, github_user):
         merge_identity_mapping(session, identity, relationships=[maps_to_relationship])
         
         logger.debug(f"        ✓ Successfully processed GitHub user: {github_login}")
+        
+        # Cache the person_id to prevent duplicate processing in same session
+        if processed_users_cache is not None:
+            processed_users_cache[github_login] = person_id
         
         return person_id
 
