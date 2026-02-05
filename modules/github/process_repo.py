@@ -4,6 +4,7 @@ from modules.github.new_pull_request_handler import new_pull_request_handler
 from modules.github.new_repo_handler import new_repo_handler
 from modules.github.new_team_handler import new_team_handler
 from modules.github.new_user_handler import new_user_handler
+from modules.github.process_github_user import get_users_needing_refresh
 from modules.github.retry_with_backoff import retry_with_backoff
 
 import os
@@ -12,42 +13,7 @@ from datetime import datetime, timedelta, timezone
 from common.logger import logger, LogContext
 
 
-def get_collaborators_needing_refresh(session, collaborators, refresh_days=7):
-    """Filter collaborators to only those needing refresh based on last_updated_at.
-    
-    Args:
-        session: Neo4j session
-        collaborators: List of GitHub collaborator objects
-        refresh_days: Number of days before refreshing identity data (default 7)
-        
-    Returns:
-        tuple: (collaborators_to_process, skip_count)
-            - collaborators_to_process: List of collaborators that need processing
-            - skip_count: Number of collaborators skipped due to recent update
-    """
-    if not collaborators:
-        return [], 0
-    
-    # Extract usernames for batch query
-    usernames = [c.login for c in collaborators]
-    
-    # Query Neo4j for IdentityMapping nodes with recent updates
-    query = """
-    UNWIND $usernames as username
-    MATCH (i:IdentityMapping {provider: 'GitHub', username: username})
-    WHERE i.last_updated_at IS NOT NULL
-      AND i.last_updated_at >= datetime() - duration({days: $refresh_days})
-    RETURN collect(i.username) as recent_usernames
-    """
-    
-    result = session.run(query, usernames=usernames, refresh_days=refresh_days).single()
-    recent_usernames = set(result['recent_usernames']) if result and result['recent_usernames'] else set()
-    
-    # Filter collaborators
-    collaborators_to_process = [c for c in collaborators if c.login not in recent_usernames]
-    skip_count = len(collaborators) - len(collaborators_to_process)
-    
-    return collaborators_to_process, skip_count
+
 
 def get_last_synced_at(session, repo_id):
     """Get the last_synced_at timestamp from Repository node.
@@ -187,7 +153,7 @@ def process_repo_(repo, session):
         
         # Optimization: Filter collaborators to only those needing refresh
         refresh_days = int(os.getenv('IDENTITY_REFRESH_DAYS', '7'))
-        collaborators_to_process, skip_count = get_collaborators_needing_refresh(
+        collaborators_to_process, skip_count = get_users_needing_refresh(
             session, collaborator_list, refresh_days
         )
         

@@ -1,8 +1,6 @@
-from datetime import datetime, timezone
-
-from db.models import IdentityMapping, Relationship, merge_identity_mapping, merge_relationship
+from db.models import Relationship, merge_relationship
 from modules.github.map_permissions_to_general import map_permissions_to_general
-from common.identity_resolver import get_or_create_person
+from modules.github.process_github_user import process_github_user
 from common.logger import logger
 
 def new_user_handler(session, collaborator, repo_id, repo_created_at):
@@ -19,52 +17,12 @@ def new_user_handler(session, collaborator, repo_id, repo_created_at):
         github_login = collaborator.login
         logger.debug(f"    Processing new user handler for: {github_login}")
         
-        github_name = collaborator.name if hasattr(collaborator, 'name') and collaborator.name else github_login
-        github_email = collaborator.email if hasattr(collaborator, 'email') and collaborator.email else ""
-        logger.debug(f"      User details: name='{github_name}', email='{github_email}'")
-
-        # Get or create Person using email-based identity resolution
-        # This ensures a single Person node per individual across all systems
-        person_id, is_new = get_or_create_person(
-            session,
-            email=github_email if github_email else None,
-            name=github_name,
-            provider="github",
-            external_id=github_login
-        )
+        # Process GitHub user: create/update Person and IdentityMapping nodes
+        person_id = process_github_user(session, collaborator)
         
         if not person_id:
-            logger.error(f"      Failed to get/create person for {github_login}")
+            logger.error(f"      Failed to process user for {github_login}")
             return
-        
-        logger.debug(f"      {'Created new' if is_new else 'Found existing'} Person: {person_id}")
-
-        # Create IdentityMapping node for GitHub with timestamp
-        identity_id = f"identity_github_{github_login}"
-        logger.debug(f"      Creating IdentityMapping node with ID: {identity_id}")
-        identity = IdentityMapping(
-            id=identity_id,
-            provider="GitHub",
-            username=github_login,
-            email=github_email,
-            last_updated_at=datetime.now(timezone.utc).isoformat()
-        )
-
-        # Create MAPS_TO relationship from IdentityMapping to Person
-        logger.debug(f"      Creating MAPS_TO relationship: {identity_id} -> {person_id}")
-        maps_to_relationship = Relationship(
-            type="MAPS_TO",
-            from_id=identity.id,
-            to_id=person_id,
-            from_type="IdentityMapping",
-            to_type="Person"
-        )
-
-        # Merge IdentityMapping node with MAPS_TO relationship
-        logger.debug(f"      Merging IdentityMapping node with MAPS_TO relationship")
-        merge_identity_mapping(session, identity, relationships=[maps_to_relationship])
-        identity.print_cli()
-        maps_to_relationship.print_cli()
 
         # Extract permissions and map to general READ/WRITE
         logger.debug(f"      Processing permissions for {github_login}: {collaborator.permissions.__dict__}")

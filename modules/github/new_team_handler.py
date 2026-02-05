@@ -1,5 +1,7 @@
-from db.models import Relationship, Team, merge_relationship, merge_team
+import os
 
+from db.models import Relationship, Team, merge_relationship, merge_team
+from modules.github.process_github_user import process_github_user, get_users_needing_refresh
 from common.logger import logger
 
 def new_team_handler(session, team, repo_id, repo_created_at):
@@ -65,10 +67,64 @@ def new_team_handler(session, team, repo_id, repo_created_at):
         merge_relationship(session, relationship)
         relationship.print_cli()
         
+        logger.debug(f"      Team node and COLLABORATOR relationship created")
+
+        # Process team members: create Person, IdentityMapping nodes and MEMBER_OF relationships
+        try:
+            members = team.get_members()
+            member_count = members.totalCount
+            logger.info(f"    Found {member_count} team members... in team {team_name}")
+            
+            # Optimization: Filter members to only those needing refresh
+            refresh_days = int(os.getenv('IDENTITY_REFRESH_DAYS', '7'))
+            member_list = list(members)
+            members_to_process, skip_count = get_users_needing_refresh(
+                session, member_list, refresh_days
+            )
+            
+            if skip_count > 0:
+                logger.info(f"    Skipping {skip_count} members (updated within last {refresh_days} days)")
+            
+            if not members_to_process:
+                logger.info(f"    All team members are up-to-date")
+            else:
+                logger.info(f"    Processing {len(members_to_process)} team members...")
+                
+                members_processed = 0
+                members_failed = 0
+                
+                for member in members_to_process:
+                    # Process GitHub user: create/update Person and IdentityMapping
+                    person_id = process_github_user(session, member)
+                    
+                    if person_id:
+                        # Create MEMBER_OF relationship from Person to Team
+                        logger.debug(f"      Creating MEMBER_OF relationship: {person_id} -> {team_id}")
+                        member_relationship = Relationship(
+                            type="MEMBER_OF",
+                            from_id=person_id,
+                            to_id=team_id,
+                            from_type="Person",
+                            to_type="Team"
+                        )
+                        
+                        logger.debug(f"      Merging MEMBER_OF relationship")
+                        merge_relationship(session, member_relationship)
+                        members_processed += 1
+                    else:
+                        members_failed += 1
+                
+                logger.info(f"    ✓ Processed {members_processed} team members")
+                if members_failed > 0:
+                    logger.info(f"    ✗ Failed: {members_failed} team members")
+                    
+        except Exception as e:
+            # Team members might not be accessible due to permissions or API limits
+            logger.info(f"    Warning: Could not fetch team members - {str(e)}")
+        
+        # Final success message after all team processing
         logger.info(f"    ✓ Successfully processed team: {team_name}")
         logger.debug(f"      Team summary: id='{team_id}', permission='{permission}'")
-
-        #Todo: Add members of the team as Persons and link them to the Team?
 
     except Exception as e:
         logger.info(f"    ✗ Error: Failed to create Team for {team.slug}: {str(e)}")

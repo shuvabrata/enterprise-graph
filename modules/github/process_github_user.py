@@ -1,0 +1,123 @@
+"""
+Shared GitHub User Processing Module
+
+Provides common functionality for processing GitHub users across different contexts
+(repository collaborators, team members, etc.)
+"""
+
+from datetime import datetime, timezone
+
+from db.models import IdentityMapping, Relationship, merge_identity_mapping, merge_relationship
+from common.identity_resolver import get_or_create_person
+from common.logger import logger
+
+
+def get_users_needing_refresh(session, github_users, refresh_days=7):
+    """Filter GitHub users to only those needing refresh based on last_updated_at.
+    
+    Args:
+        session: Neo4j session
+        github_users: List of GitHub user objects (with login attribute)
+        refresh_days: Number of days before refreshing identity data (default 7)
+        
+    Returns:
+        tuple: (users_to_process, skip_count)
+            - users_to_process: List of users that need processing
+            - skip_count: Number of users skipped due to recent update
+    """
+    if not github_users:
+        return [], 0
+    
+    # Extract usernames for batch query
+    usernames = [u.login for u in github_users]
+    
+    # Query Neo4j for IdentityMapping nodes with recent updates
+    query = """
+    UNWIND $usernames as username
+    MATCH (i:IdentityMapping {provider: 'GitHub', username: username})
+    WHERE i.last_updated_at IS NOT NULL
+      AND i.last_updated_at >= datetime() - duration({days: $refresh_days})
+    RETURN collect(i.username) as recent_usernames
+    """
+    
+    result = session.run(query, usernames=usernames, refresh_days=refresh_days).single()
+    recent_usernames = set(result['recent_usernames']) if result and result['recent_usernames'] else set()
+    
+    # Filter users
+    users_to_process = [u for u in github_users if u.login not in recent_usernames]
+    skip_count = len(github_users) - len(users_to_process)
+    
+    return users_to_process, skip_count
+
+
+def process_github_user(session, github_user):
+    """Process a GitHub user: create/update Person and IdentityMapping nodes.
+    
+    This function handles the common identity resolution pattern used across
+    different GitHub user contexts (collaborators, team members, etc.).
+    
+    Args:
+        session: Neo4j session
+        github_user: GitHub user object with attributes like login, name, email
+        
+    Returns:
+        str | None: person_id if successful, None if failed
+    """
+    try:
+        # Extract available information from GitHub user
+        github_login = github_user.login
+        logger.debug(f"      Processing GitHub user: {github_login}")
+        
+        github_name = github_user.name if hasattr(github_user, 'name') and github_user.name else github_login
+        github_email = github_user.email if hasattr(github_user, 'email') and github_user.email else ""
+        logger.debug(f"        User details: name='{github_name}', email='{github_email}'")
+
+        # Get or create Person using email-based identity resolution
+        # This ensures a single Person node per individual across all systems
+        person_id, is_new = get_or_create_person(
+            session,
+            email=github_email if github_email else None,
+            name=github_name,
+            provider="github",
+            external_id=github_login
+        )
+        
+        if not person_id:
+            logger.error(f"        Failed to get/create person for {github_login}")
+            return None
+        
+        logger.debug(f"        {'Created new' if is_new else 'Found existing'} Person: {person_id}")
+
+        # Create IdentityMapping node for GitHub with timestamp
+        identity_id = f"identity_github_{github_login}"
+        logger.debug(f"        Creating/updating IdentityMapping node: {identity_id}")
+        identity = IdentityMapping(
+            id=identity_id,
+            provider="GitHub",
+            username=github_login,
+            email=github_email,
+            last_updated_at=datetime.now(timezone.utc).isoformat()
+        )
+
+        # Create MAPS_TO relationship from IdentityMapping to Person
+        logger.debug(f"        Creating MAPS_TO relationship: {identity_id} -> {person_id}")
+        maps_to_relationship = Relationship(
+            type="MAPS_TO",
+            from_id=identity.id,
+            to_id=person_id,
+            from_type="IdentityMapping",
+            to_type="Person"
+        )
+
+        # Merge IdentityMapping node with MAPS_TO relationship
+        logger.debug(f"        Merging IdentityMapping with MAPS_TO relationship")
+        merge_identity_mapping(session, identity, relationships=[maps_to_relationship])
+        
+        logger.debug(f"        ✓ Successfully processed GitHub user: {github_login}")
+        
+        return person_id
+
+    except Exception as e:
+        logger.error(f"        ✗ Error processing GitHub user {github_user.login}: {str(e)}")
+        logger.exception(e)
+        return None
