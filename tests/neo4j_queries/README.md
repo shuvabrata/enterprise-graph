@@ -115,10 +115,9 @@ Terminal output with emoji icons and formatted tables.
 
 ### Adding New Queries
 
-1. Add query to `queries.md`
+1. Create test function in appropriate `test_queries_*.py` file with query and docstring
 2. Configure expectations in `queries_config.yaml`
-3. Create test function in appropriate `test_queries_*.py` file
-4. Run tests to validate
+3. Run tests to validate
 
 ### Modifying Expectations
 
@@ -148,18 +147,17 @@ Load `tests/neo4j_queries/results/latest.json` to check test results, failed que
 ## 📚 Additional Resources
 
 - [QUICK_START.md](QUICK_START.md) - 2-minute setup guide
-- [queries.md](queries.md) - Complete query reference
 - [COMPLETION_SUMMARY.md](COMPLETION_SUMMARY.md) - Implementation details
 - [design/high-level-design.md](../../design/high-level-design.md) - Project architecture
 - [design/INDEX_STRATEGY.md](../../design/INDEX_STRATEGY.md) - Index optimization
+- Test files (`test_queries_*.py`) - Query implementations grouped by domain
 
 ## 🤝 Contributing
 
 When adding new queries:
-1. Document in `queries.md` first
+1. Create test function in appropriate `test_queries_*.py` file with clear docstring
 2. Add realistic expectations to `queries_config.yaml`
-3. Create test function following existing patterns
-4. Ensure tests pass before committing
+3. Ensure tests pass before committing
 
 ---
 

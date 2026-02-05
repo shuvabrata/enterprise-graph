@@ -41,4 +41,4 @@ pytest tests/neo4j_queries/ -v
 ## Next Steps
 - See [README.md](README.md) for full documentation
 - Edit `queries_config.yaml` to customize expectations
-- Review `queries.md` for all available queries
+- Browse test files (`test_queries_*.py`) to see all available queries
