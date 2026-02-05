@@ -52,6 +52,8 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Important: Ensure the python virtual env is set before running any scripts to avoid dependency issues.
+
 **Environment Variables** (create `.env` from `.env.example`):
 - `NEO4J_URI=bolt://localhost:7687`
 - `NEO4J_USERNAME=neo4j`

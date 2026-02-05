@@ -1,4 +1,6 @@
 pytest
 pytest-asyncio
+pytest-html>=3.2.0
 httpx
 pylint
+pyyaml>=6.0

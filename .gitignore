@@ -57,6 +57,10 @@ coverage.xml
 .pytest_cache/
 cover/
 
+# Neo4j query test results
+tests/neo4j_queries/results/
+pytest_report.html
+
 # Translations
 *.mo
 *.pot
