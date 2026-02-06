@@ -1,5 +1,6 @@
 import re
 from datetime import datetime
+from typing import Optional, List
 
 from db.models import Commit, IdentityMapping, Relationship, merge_commit, merge_identity_mapping, merge_relationship
 from modules.github.new_file_handler import new_file_handler
@@ -170,6 +171,48 @@ def extract_issue_keys(message):
     return list(set(matches))  # Return unique keys
 
 
+def extract_issue_keys_from_branch(branch_name: str, patterns: Optional[List[str]] = None) -> List[str]:
+    """
+    Extract Jira issue keys from Git branch name.
+    
+    Supports both Git Flow conventions and direct prefix patterns:
+    - feature/PROJ-123-description
+    - bugfix/PROJ-123-fix-issue
+    - PROJ-123-description (direct prefix)
+    
+    Args:
+        branch_name: Git branch name string
+        patterns: Optional list of regex patterns to use. Each pattern must have
+                 one capture group to extract the issue key. If None, uses defaults.
+        
+    Returns:
+        list: List of unique issue keys found
+    """
+    # Default patterns support both Git Flow and direct prefix
+    if patterns is None:
+        patterns = [
+            r'(?:feature|bugfix|hotfix|release)/([A-Z]{2,}-\d+)',  # Git Flow
+            r'^([A-Z]{2,}-\d+)',  # Direct prefix
+        ]
+    
+    all_matches = []
+    
+    for pattern in patterns:
+        try:
+            matches = re.findall(pattern, branch_name)
+            all_matches.extend(matches)
+        except re.error as e:
+            logger.warning(f"Invalid regex pattern '{pattern}': {e}")
+            continue
+    
+    unique_keys = list(set(all_matches))
+    
+    if unique_keys:
+        logger.debug(f"        Extracted issue keys from branch '{branch_name}': {unique_keys}")
+    
+    return unique_keys
+
+
 def validate_issue_exists(session, issue_key):
     """
     Check if a Jira issue exists in Neo4j.
@@ -191,7 +234,9 @@ def validate_issue_exists(session, issue_key):
     return record["issue_id"] if record else None
 
 
-def new_commit_handler(session, repo_name, commit, branch_id, repo_owner=None, branch_name="main"):
+def new_commit_handler(session, repo_name, commit, branch_id, repo_owner=None, branch_name="main",
+                       branch_patterns: Optional[List[str]] = None,
+                       extraction_sources: Optional[List[str]] = None):
     """
     Handle a commit by creating Commit node and relationships.
 
@@ -202,6 +247,8 @@ def new_commit_handler(session, repo_name, commit, branch_id, repo_owner=None, b
         branch_id: Branch ID this commit belongs to
         repo_owner: GitHub repository owner (optional, for file URLs)
         branch_name: Branch name (default: "main")
+        branch_patterns: Optional list of regex patterns for extracting issue keys from branch names
+        extraction_sources: Optional list of sources to extract from ("branch", "commit_message")
 
     Returns:
         bool: True if successful, False otherwise
@@ -283,9 +330,28 @@ def new_commit_handler(session, repo_name, commit, branch_id, repo_owner=None, b
         )
         merge_relationship(session, authored_by_rel)
 
-        # Extract and validate Jira issue keys from commit message
-        issue_keys = extract_issue_keys(commit_message)
-        for issue_key in issue_keys:
+        # Extract and validate Jira issue keys from configured sources
+        sources = extraction_sources or ["branch", "commit_message"]
+        all_issue_keys = []
+        
+        # Extract from branch name if enabled
+        if "branch" in sources:
+            branch_keys = extract_issue_keys_from_branch(branch_name, branch_patterns)
+            if branch_keys:
+                logger.debug(f"        Found {len(branch_keys)} issue key(s) from branch name: {branch_keys}")
+                all_issue_keys.extend(branch_keys)
+        
+        # Extract from commit message if enabled
+        if "commit_message" in sources:
+            commit_keys = extract_issue_keys(commit_message)
+            if commit_keys:
+                logger.debug(f"        Found {len(commit_keys)} issue key(s) from commit message: {commit_keys}")
+                all_issue_keys.extend(commit_keys)
+        
+        # Create REFERENCES relationships for all unique issue keys
+        unique_issue_keys = list(set(all_issue_keys))
+        
+        for issue_key in unique_issue_keys:
             issue_id = validate_issue_exists(session, issue_key)
             if issue_id:
                 # Create REFERENCES relationship (Commit → Issue)
@@ -297,6 +363,9 @@ def new_commit_handler(session, repo_name, commit, branch_id, repo_owner=None, b
                     to_type="Issue"
                 )
                 merge_relationship(session, references_rel)
+                logger.debug(f"        Created REFERENCES relationship: {commit_id} -> {issue_key}")
+            else:
+                logger.debug(f"        Issue {issue_key} not found in database, skipping REFERENCES")
 
         # Process modified files
         try:

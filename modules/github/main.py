@@ -16,6 +16,7 @@ from db.models import (
 from modules.github.get_all_repos_for_owner import get_all_repos_for_owner
 from modules.github.process_repo import process_repo
 from modules.github.utils import get_github_client
+from common.config_validator import validate_config
 
 from common.logger import logger
 
@@ -48,6 +49,12 @@ def main():
     """Main execution function"""
     logger.info("GitHub Repository Information Fetcher")
     logger.info("=" * 50)
+    
+    # Validate configuration before processing
+    config_path = Path(__file__).parent / ".config.json"
+    if not validate_config(str(config_path), config_type="github"):
+        logger.error("Configuration validation failed. Please fix errors and try again.")
+        return
     
     # Initialize Neo4j connection
     neo4j_uri = os.getenv('NEO4J_URI', 'bolt://localhost:7687')
@@ -100,7 +107,7 @@ def main():
                             try:
                                 # Process repository (creates nodes and relationships)
                                 logger.info(f"\n  ↳ {repo.name}")
-                                process_repo(repo, session)
+                                process_repo(repo, session, repo_config)
                                 repos_processed += 1
                                 
                             except Exception as e:
@@ -116,7 +123,7 @@ def main():
                         repo = client.get_repo(f"{owner}/{repo_name}")
                         
                         # Process repository (creates nodes and relationships)
-                        process_repo(repo, session)
+                        process_repo(repo, session, repo_config)
                         repos_processed += 1
                     
                 except Exception as e:

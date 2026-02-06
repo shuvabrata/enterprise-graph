@@ -6,9 +6,11 @@ from modules.github.new_team_handler import new_team_handler
 from modules.github.new_user_handler import new_user_handler
 from modules.github.process_github_user import get_users_needing_refresh
 from modules.github.retry_with_backoff import retry_with_backoff
+from common.config_validator import get_repo_branch_patterns, get_repo_extraction_sources
 
 import os
 from datetime import datetime, timedelta, timezone
+from typing import Optional, Dict, Any
 
 from common.logger import logger, LogContext
 
@@ -129,14 +131,29 @@ def get_fully_synced_pr_numbers(session, repo_id):
     return set()
 
 
-def process_repo(repo, session):
+def process_repo(repo, session, repo_config: Optional[Dict[str, Any]] = None):
     with LogContext(request_id=repo.full_name):
-        return process_repo_(repo, session)
+        return process_repo_(repo, session, repo_config)
 
-def process_repo_(repo, session):
-    """Process repository: create repo node, collaborators, teams, branches, and commits in Neo4j."""
+def process_repo_(repo, session, repo_config: Optional[Dict[str, Any]] = None):
+    """Process repository: create repo node, collaborators, teams, branches, and commits in Neo4j.
+    
+    Args:
+        repo: GitHub repository object
+        session: Neo4j session
+        repo_config: Optional repository configuration dict with branch_patterns, extraction_sources, etc.
+    """
     # Session-level cache to prevent duplicate user processing within same transaction
     processed_users_cache = {}
+    
+    # Extract configuration for issue key extraction
+    repo_config = repo_config or {}
+    branch_patterns = get_repo_branch_patterns(repo_config)
+    extraction_sources = get_repo_extraction_sources(repo_config)
+    
+    logger.debug(f"    Using extraction sources: {extraction_sources}")
+    if "branch" in extraction_sources:
+        logger.debug(f"    Using branch patterns: {branch_patterns}")
     
     # Step 1: Create Repository node FIRST
     repo_id, repo_created_at = new_repo_handler(session, repo)
@@ -261,7 +278,16 @@ def process_repo_(repo, session):
             commits_failed = 0
 
             for commit in commits_to_process:
-                if new_commit_handler(session, repo.name, commit, default_branch_id, repo.owner.login, repo.default_branch):
+                if new_commit_handler(
+                    session, 
+                    repo.name, 
+                    commit, 
+                    default_branch_id, 
+                    repo.owner.login, 
+                    repo.default_branch,
+                    branch_patterns=branch_patterns,
+                    extraction_sources=extraction_sources
+                ):
                     commits_processed += 1
                 else:
                     commits_failed += 1
