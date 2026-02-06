@@ -1,5 +1,7 @@
+import os
 from db.models import Issue, Relationship, merge_issue
 from modules.jira.new_jira_user_handler import new_jira_user_handler
+from modules.jira.team_stub_handler import get_or_create_team_stub
 from common.logger import logger
 
 
@@ -156,7 +158,30 @@ def new_issue_handler(session, issue_data, epic_id_map, sprint_id_map, jira_conn
                             to_type="Sprint"
                         ))
         
-        # 5. Issue Links: BLOCKS, DEPENDS_ON, RELATES_TO
+        # 5. TEAM -> Team (if issue has a team assignment)
+        # Get configurable field name from environment
+        team_field_name = os.getenv('JIRA_ISSUE_TEAM_FIELD', 'Team')
+        team_field = fields.get(team_field_name)
+        if team_field:
+            # Team field could be a string or an object with 'value' or 'name'
+            team_value = None
+            if isinstance(team_field, dict):
+                team_value = team_field.get('value') or team_field.get('name')
+            else:
+                team_value = str(team_field)
+            
+            if team_value:
+                logger.debug(f"    Processing team assignment: {team_value}")
+                team_id = get_or_create_team_stub(session, team_value)
+                relationships.append(Relationship(
+                    type="TEAM",
+                    from_id=issue_id,
+                    to_id=team_id,
+                    from_type="Issue",
+                    to_type="Team"
+                ))
+        
+        # 6. Issue Links: BLOCKS, DEPENDS_ON, RELATES_TO
         issue_links = fields.get('issuelinks', [])
         for link in issue_links:
             link_type = link.get('type', {})

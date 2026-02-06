@@ -213,25 +213,37 @@ def extract_issue_keys_from_branch(branch_name: str, patterns: Optional[List[str
     return unique_keys
 
 
-def validate_issue_exists(session, issue_key):
+def get_or_create_issue_stub(session, issue_key):
     """
-    Check if a Jira issue exists in Neo4j.
+    Get or create a stub Issue node for a Jira issue key.
+    
+    Creates a minimal Issue node if it doesn't exist. When the full Jira data
+    is loaded later, the MERGE operation will update this stub with complete data.
+    This allows commits to reference issues regardless of load order.
     
     Args:
         session: Neo4j session
-        issue_key: Issue key to validate (e.g., "PROJ-123")
+        issue_key: Issue key (e.g., "PROJ-123")
         
     Returns:
-        str: Issue ID if exists, None otherwise
+        str: Issue ID (always returns a valid ID)
     """
+    issue_id = f"issue_{issue_key}"
+    
     query = """
-    MATCH (i:Issue {key: $issue_key})
-    RETURN i.id as issue_id
-    LIMIT 1
+    MERGE (i:Issue {id: $issue_id})
+    ON CREATE SET i.key = $issue_key,
+                  i.source = 'github_reference',
+                  i.created_at = datetime()
+    RETURN i.id as issue_id, i.source as source
     """
-    result = session.run(query, issue_key=issue_key)
+    result = session.run(query, issue_id=issue_id, issue_key=issue_key)
     record = result.single()
-    return record["issue_id"] if record else None
+    
+    if record and record['source'] == 'github_reference':
+        logger.debug(f"        Created stub Issue node for {issue_key} (will be enriched when Jira loads)")
+    
+    return issue_id
 
 
 def new_commit_handler(session, repo_name, commit, branch_id, repo_owner=None, branch_name="main",
@@ -352,20 +364,19 @@ def new_commit_handler(session, repo_name, commit, branch_id, repo_owner=None, b
         unique_issue_keys = list(set(all_issue_keys))
         
         for issue_key in unique_issue_keys:
-            issue_id = validate_issue_exists(session, issue_key)
-            if issue_id:
-                # Create REFERENCES relationship (Commit → Issue)
-                references_rel = Relationship(
-                    type="REFERENCES",
-                    from_id=commit_id,
-                    to_id=issue_id,
-                    from_type="Commit",
-                    to_type="Issue"
-                )
-                merge_relationship(session, references_rel)
-                logger.debug(f"        Created REFERENCES relationship: {commit_id} -> {issue_key}")
-            else:
-                logger.debug(f"        Issue {issue_key} not found in database, skipping REFERENCES")
+            # Get or create Issue node (creates stub if doesn't exist)
+            issue_id = get_or_create_issue_stub(session, issue_key)
+            
+            # Create REFERENCES relationship (Commit → Issue)
+            references_rel = Relationship(
+                type="REFERENCES",
+                from_id=commit_id,
+                to_id=issue_id,
+                from_type="Commit",
+                to_type="Issue"
+            )
+            merge_relationship(session, references_rel)
+            logger.debug(f"        Created REFERENCES relationship: {commit_id} -> {issue_key}")
 
         # Process modified files
         try:

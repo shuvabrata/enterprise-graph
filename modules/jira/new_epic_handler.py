@@ -1,6 +1,7 @@
 import os
 from db.models import Epic, Relationship, merge_epic
 from modules.jira.new_jira_user_handler import new_jira_user_handler
+from modules.jira.team_stub_handler import get_or_create_team_stub
 
 from common.logger import logger
 
@@ -137,32 +138,19 @@ def new_epic_handler(session, issue_data, initiative_id_map, jira_base_url=None,
             logger.debug(f"    Created PART_OF relationship to initiative")
         
         # Handle TEAM relationship (if team value exists)
-        # Note: This creates a relationship to a Team node by name
-        # The Team node should already exist from Layer 1
+        # Creates Team stub if doesn't exist - will be enriched when GitHub loads
         if team_value:
-            # We need to find the Team node by name
-            # For now, we'll store the team name and create the relationship
-            # This requires a query to find the team node
-            team_query = """
-            MATCH (t:Team)
-            WHERE t.name = $team_name
-            RETURN t.id as team_id
-            """
-            result = session.run(team_query, team_name=team_value)
-            team_record = result.single()
+            # Get or create Team node (creates stub if doesn't exist)
+            team_id = get_or_create_team_stub(session, team_value)
             
-            if team_record:
-                team_id = team_record['team_id']
-                relationships.append(Relationship(
-                    type="TEAM",
-                    from_id=epic_id,
-                    to_id=team_id,
-                    from_type="Epic",
-                    to_type="Team"
-                ))
-                logger.debug(f"    Created TEAM relationship to: {team_value}")
-            else:
-                logger.warning(f"    Team '{team_value}' not found in database, skipping TEAM relationship")
+            relationships.append(Relationship(
+                type="TEAM",
+                from_id=epic_id,
+                to_id=team_id,
+                from_type="Epic",
+                to_type="Team"
+            ))
+            logger.debug(f"    Created TEAM relationship to: {team_value}")
         
         # Merge epic into Neo4j
         logger.debug(f"    Merging Epic node: {epic_id}")

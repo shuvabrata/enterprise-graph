@@ -916,6 +916,10 @@ def merge_team(session: Session, team: Team, relationships: Optional[List[Relati
     """
     Merge a Team node into Neo4j.
     
+    This function updates existing Team nodes (including stubs created from Jira references)
+    with complete GitHub data. Stub teams created with source='jira_reference' will be
+    enriched with full properties when GitHub data loads.
+    
     Args:
         session: Neo4j session
         team: Team dataclass instance
@@ -927,7 +931,8 @@ def merge_team(session: Session, team: Team, relationships: Optional[List[Relati
     set_clauses = [
         "t.name = $name",
         "t.focus_area = $focus_area",
-        "t.target_size = $target_size"
+        "t.target_size = $target_size",
+        "t.source = 'github'"  # Mark as enriched by GitHub (overwrites 'jira_reference' if it was a stub)
     ]
     
     # Only set created_at if it's not empty
@@ -1128,6 +1133,10 @@ def merge_issue(session: Session, issue: Issue, relationships: Optional[List[Rel
     """
     Merge an Issue node into Neo4j.
     
+    This function updates existing Issue nodes (including stubs created from GitHub references)
+    with complete Jira data. Stub issues created with source='github_reference' will be
+    enriched with full properties when Jira data loads.
+    
     Args:
         session: Neo4j session
         issue: Issue dataclass instance
@@ -1142,7 +1151,8 @@ def merge_issue(session: Session, issue: Issue, relationships: Optional[List[Rel
         "i.summary = $summary",
         "i.priority = $priority",
         "i.status = $status",
-        "i.story_points = $story_points"
+        "i.story_points = $story_points",
+        "i.source = 'jira'"  # Mark as enriched by Jira (overwrites 'github_reference' if it was a stub)
     ]
     
     # Only set created_at if it's not empty
