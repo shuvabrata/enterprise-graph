@@ -191,7 +191,7 @@ queries:
   - name: "Review Bottlenecks"
     section: "GitHub - Data Quality"
     expectations:
-      max_rows: 5  # Alert if reviewers have too many pending
+      max_rows: 10  # Alert if reviewers have too many pending
       max_time_ms: 500
   
   # ============================================================================

@@ -270,7 +270,7 @@ RETURN author.name as pr_author,
        reviewer.name as reviewer,
        count(pr) as reviews
 ORDER BY reviews DESC
-LIMIT 20
+LIMIT 10
 ```
 
 ### PR Size Distribution

@@ -105,7 +105,7 @@ LIMIT 5
 MATCH path = (p:Person)-[:REPORTS_TO*]->(m:Person)
 WHERE NOT (m)-[:REPORTS_TO]->()
 RETURN path
-LIMIT 20
+LIMIT 10
 
 // Team focus areas
 MATCH (t:Team)

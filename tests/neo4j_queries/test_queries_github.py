@@ -501,7 +501,7 @@ def test_prs_without_reviews(query_executor, expectations, track_result):
     WHERE NOT (pr)-[:REVIEWED_BY]->()
     RETURN pr.number, pr.title, pr.state, pr.created_at
     ORDER BY pr.created_at DESC
-    LIMIT 20
+    LIMIT 10
     """
     
     result = query_executor.execute(

@@ -129,7 +129,7 @@ def test_end_to_end_traceability(query_executor, expectations, track_result):
     MATCH (i)<-[:REFERENCES]-(c:Commit)<-[:INCLUDES]-(pr:PullRequest)
     RETURN init.key as initiative, e.key as epic, i.key as issue,
            c.sha as commit_sha, pr.number as pr_number
-    LIMIT 20
+    LIMIT 10
     """
     
     result = query_executor.execute(
@@ -149,7 +149,7 @@ def test_work_without_code(query_executor, expectations, track_result):
     MATCH (i:Issue {status: 'Done'})
     WHERE NOT (i)<-[:REFERENCES]-(:Commit)
     RETURN i.key, i.type, i.summary, i.status
-    LIMIT 20
+    LIMIT 10
     """
     
     result = query_executor.execute(

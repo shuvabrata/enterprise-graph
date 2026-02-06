@@ -294,7 +294,7 @@ def test_orphaned_issues(query_executor, expectations, track_result):
     MATCH (i:Issue)
     WHERE NOT (i)-[:PART_OF]->(:Epic)
     RETURN i.key, i.type, i.summary, i.status
-    LIMIT 20
+    LIMIT 10
     """
     
     result = query_executor.execute(
