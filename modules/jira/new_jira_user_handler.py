@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from db.models import IdentityMapping, Relationship, merge_identity_mapping
 from common.identity_resolver import get_or_create_person
 from common.logger import logger
@@ -47,7 +49,8 @@ def new_jira_user_handler(session, user_data):
             id=identity_id,
             provider="Jira",
             username=display_name,  # Jira uses display name as username
-            email=email
+            email=email,
+            last_updated_at=datetime.now(timezone.utc).isoformat()
         )
 
         # Create MAPS_TO relationship from IdentityMapping to Person

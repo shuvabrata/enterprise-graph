@@ -197,6 +197,9 @@ def generate_identity_mappings(all_people: List[Dict[str, Any]]) -> List[Dict[st
     """Generate identity mappings for GitHub and Jira."""
     mappings = []
     
+    # Use a fixed timestamp for simulation data consistency
+    simulation_timestamp = datetime.now().isoformat()
+    
     for person in all_people:
         # GitHub mapping
         github_mapping = {
@@ -204,7 +207,8 @@ def generate_identity_mappings(all_people: List[Dict[str, Any]]) -> List[Dict[st
             "provider": "GitHub",
             "username": generate_github_username(person['name']),
             "email": person['email'],
-            "person_id": person['id']
+            "person_id": person['id'],
+            "last_updated_at": simulation_timestamp
         }
         mappings.append(github_mapping)
         
@@ -214,7 +218,8 @@ def generate_identity_mappings(all_people: List[Dict[str, Any]]) -> List[Dict[st
             "provider": "Jira",
             "username": generate_jira_username(person['name']),
             "email": person['email'],
-            "person_id": person['id']
+            "person_id": person['id'],
+            "last_updated_at": simulation_timestamp
         }
         mappings.append(jira_mapping)
     

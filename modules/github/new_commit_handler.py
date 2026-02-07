@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 
 from db.models import Commit, IdentityMapping, Relationship, merge_commit, merge_identity_mapping, merge_relationship
@@ -113,7 +113,8 @@ def get_or_create_commit_author(session, commit_author, repo_created_at):
             id=identity_id,
             provider="GitHub",
             username=github_login,
-            email=github_email
+            email=github_email,
+            last_updated_at=datetime.now(timezone.utc).isoformat()
         )
         
         # Create MAPS_TO relationship from IdentityMapping to Person

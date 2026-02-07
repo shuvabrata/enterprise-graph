@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from db.models import PullRequest, Branch, Relationship, IdentityMapping, merge_pull_request, merge_branch, merge_relationship, merge_identity_mapping
 from modules.github.retry_with_backoff import retry_with_backoff
@@ -122,7 +122,8 @@ def get_or_create_pr_author(session, pr_user):
             id=identity_id,
             provider="GitHub",
             username=github_login,
-            email=github_email if github_email else ""
+            email=github_email if github_email else "",
+            last_updated_at=datetime.now(timezone.utc).isoformat()
         )
         
         # Create MAPS_TO relationship from IdentityMapping to Person
