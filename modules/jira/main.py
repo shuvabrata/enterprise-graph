@@ -277,15 +277,19 @@ def fetch_sprints_by_ids(jira, sprint_ids):
 
 
 def fetch_issues(jira, lookback_days=90, max_results_per_page=100):
-    """Fetch all issues from Jira created in the last N days using pagination."""
+    """Fetch all issues from Jira created in the last N days using pagination.
+    
+    Note: Excludes Initiative and Epic issue types as they are fetched separately.
+    """
     try:
         # Calculate the date N days ago
         cutoff_date = datetime.now() - timedelta(days=lookback_days)
         cutoff_date_str = cutoff_date.strftime("%Y-%m-%d")
         
-        jql = f'created >= {cutoff_date_str} ORDER BY created DESC'
+        # Exclude Initiatives and Epics since they're fetched separately
+        jql = f'created >= {cutoff_date_str} AND issuetype NOT IN (Initiative, Epic) ORDER BY created DESC'
         
-        logger.info(f"Fetching all issues created since {cutoff_date_str}...")
+        logger.info(f"Fetching issues (excluding Initiatives and Epics) created since {cutoff_date_str}...")
         logger.info(f"Executing JQL: {jql}")
         
         all_issues = []
