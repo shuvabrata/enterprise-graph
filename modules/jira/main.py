@@ -114,32 +114,31 @@ def fetch_initiatives(jira, lookback_days=90, max_results_per_page=100):
         logger.info(f"Executing JQL: {jql}")
         
         all_initiatives = []
-        start_at = 0
+        next_page_token = None
         
         while True:
-            # Use the jql method with v3 API (atlassian-python-api 4.x)
-            issues = jira.jql(
+            # Use the enhanced_jql method for Jira Cloud
+            response = jira.enhanced_jql(
                 jql=jql,
-                start=start_at,
+                nextPageToken=next_page_token,
                 limit=max_results_per_page
             )
             
-            if not issues or 'issues' not in issues:
+            if not response or 'issues' not in response:
                 break
             
-            batch = issues['issues']
+            batch = response['issues']
             if not batch:
                 break
             
             all_initiatives.extend(batch)
             logger.info(f"  Fetched {len(batch)} initiatives (total: {len(all_initiatives)})")
             
-            # Check if there are more results
-            total = issues.get('total', 0)
-            if len(all_initiatives) >= total:
+            # Check for next page token
+            next_page_token = response.get('nextPageToken')
+            if not next_page_token:
+                # No more pages
                 break
-            
-            start_at += len(batch)
         
         logger.info(f"Found {len(all_initiatives)} total initiatives")
         return all_initiatives
@@ -163,32 +162,31 @@ def fetch_epics(jira, lookback_days=90, max_results_per_page=100):
         logger.info(f"Executing JQL: {jql}")
         
         all_epics = []
-        start_at = 0
+        next_page_token = None
         
         while True:
-            # Use the jql method with v3 API (atlassian-python-api 4.x)
-            issues = jira.jql(
+            # Use the enhanced_jql method for Jira Cloud
+            response = jira.enhanced_jql(
                 jql=jql,
-                start=start_at,
+                nextPageToken=next_page_token,
                 limit=max_results_per_page
             )
             
-            if not issues or 'issues' not in issues:
+            if not response or 'issues' not in response:
                 break
             
-            batch = issues['issues']
+            batch = response['issues']
             if not batch:
                 break
             
             all_epics.extend(batch)
             logger.info(f"  Fetched {len(batch)} epics (total: {len(all_epics)})")
             
-            # Check if there are more results
-            total = issues.get('total', 0)
-            if len(all_epics) >= total:
+            # Check for next page token
+            next_page_token = response.get('nextPageToken')
+            if not next_page_token:
+                # No more pages
                 break
-            
-            start_at += len(batch)
         
         logger.info(f"Found {len(all_epics)} total epics")
         return all_epics
@@ -291,32 +289,31 @@ def fetch_issues(jira, lookback_days=90, max_results_per_page=100):
         logger.info(f"Executing JQL: {jql}")
         
         all_issues = []
-        start_at = 0
+        next_page_token = None
         
         while True:
-            # Use the jql method with v3 API (atlassian-python-api 4.x)
-            issues = jira.jql(
+            # Use the enhanced_jql method for Jira Cloud
+            response = jira.enhanced_jql(
                 jql=jql,
-                start=start_at,
+                nextPageToken=next_page_token,
                 limit=max_results_per_page
             )
             
-            if not issues or 'issues' not in issues:
+            if not response or 'issues' not in response:
                 break
             
-            batch = issues['issues']
+            batch = response['issues']
             if not batch:
                 break
             
             all_issues.extend(batch)
             logger.info(f"  Fetched {len(batch)} issues (total: {len(all_issues)})")
             
-            # Check if there are more results
-            total = issues.get('total', 0)
-            if len(all_issues) >= total:
+            # Check for next page token
+            next_page_token = response.get('nextPageToken')
+            if not next_page_token:
+                # No more pages
                 break
-            
-            start_at += len(batch)
         
         logger.info(f"Found {len(all_issues)} total issues")
         return all_issues
