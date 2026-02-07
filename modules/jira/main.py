@@ -2,8 +2,8 @@
 """
 Jira Integration - Fetch Projects, Initiatives, Epics, Sprints, and Issues
 
-This program connects to Jira, fetches projects, initiatives, epics, sprints, and issues
-(Stories, Bugs, Tasks), and loads them into Neo4j with proper relationships.
+This program connects to Jira, fetches projects, initiatives, epics, sprints, and all issue types,
+and loads them into Neo4j with proper relationships.
 """
 
 import json
@@ -279,15 +279,15 @@ def fetch_sprints_by_ids(jira, sprint_ids):
 
 
 def fetch_issues(jira, lookback_days=90, max_results_per_page=100):
-    """Fetch issues (Story, Bug, Task) from Jira created in the last N days using pagination."""
+    """Fetch all issues from Jira created in the last N days using pagination."""
     try:
         # Calculate the date N days ago
         cutoff_date = datetime.now() - timedelta(days=lookback_days)
         cutoff_date_str = cutoff_date.strftime("%Y-%m-%d")
         
-        jql = f'issuetype IN (Story, Bug, Task) AND created >= {cutoff_date_str} ORDER BY created DESC'
+        jql = f'created >= {cutoff_date_str} ORDER BY created DESC'
         
-        logger.info(f"Fetching issues (Story, Bug, Task) created since {cutoff_date_str}...")
+        logger.info(f"Fetching all issues created since {cutoff_date_str}...")
         logger.info(f"Executing JQL: {jql}")
         
         all_issues = []
@@ -547,13 +547,13 @@ def main():
                         logger.exception(e)
                         sprints_failed += 1
             
-            # Process issues (Story, Bug, Task)
+            # Process issues (all types)
             logger.info("\n" + "=" * 80)
             logger.info("PROCESSING ISSUES")
             logger.info("=" * 80)
             
             # Count by type
-            issue_type_counts = {"Story": 0, "Bug": 0, "Task": 0}
+            issue_type_counts = {}
             
             logger.info(f"Processing {len(issues)} issue(s)...")
             
@@ -570,9 +570,8 @@ def main():
                         )
                         if issue_id:
                             # Count by type
-                            issue_type = issue_data.get('fields', {}).get('issuetype', {}).get('name', '')
-                            if issue_type in issue_type_counts:
-                                issue_type_counts[issue_type] += 1
+                            issue_type = issue_data.get('fields', {}).get('issuetype', {}).get('name', 'Unknown')
+                            issue_type_counts[issue_type] = issue_type_counts.get(issue_type, 0) + 1
                             issues_processed += 1
                         else:
                             issues_failed += 1

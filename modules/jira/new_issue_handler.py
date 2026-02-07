@@ -6,7 +6,7 @@ from common.logger import logger
 
 
 def new_issue_handler(session, issue_data, epic_id_map, sprint_id_map, jira_connection=None, jira_base_url=None):
-    """Handle a Jira issue (Story, Bug, Task) by creating Issue node and relationships.
+    """Handle a Jira issue (all types) by creating Issue node and relationships.
 
     Args:
         session: Neo4j session
@@ -32,11 +32,6 @@ def new_issue_handler(session, issue_data, epic_id_map, sprint_id_map, jira_conn
         # Extract issue type
         issue_type_obj = fields.get('issuetype', {})
         issue_type = issue_type_obj.get('name', 'Unknown') if issue_type_obj else 'Unknown'
-        
-        # Only process Story, Bug, Task
-        if issue_type not in ['Story', 'Bug', 'Task']:
-            logger.warning(f"    Skipping issue {issue_key} - type {issue_type} not in [Story, Bug, Task]")
-            return None
         
         logger.info(f"  Processing {issue_type}: {issue_key}")
         
