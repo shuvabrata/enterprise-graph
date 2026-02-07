@@ -29,13 +29,13 @@ This test suite automatically:
 
 ```bash
 # Basic run
-pytest tests/test_property_validation.py -v
+pytest tests/property_validation/test_property_validation.py -v
 
 # With console output (recommended)
-pytest tests/test_property_validation.py -v -s
+pytest tests/property_validation/test_property_validation.py -v -s
 
 # Run specific test
-pytest tests/test_property_validation.py::test_validate_all_properties -v
+pytest tests/property_validation/test_property_validation.py::test_validate_all_properties -v
 ```
 
 ### Environment Variables
@@ -52,7 +52,7 @@ Or use a `.env` file in the project root.
 
 ### Output Files
 
-Reports are generated in `tests/property_validation/`:
+Reports are generated in `tests/property_validation/results/`:
 - `report.json` - Machine-readable validation results
 - `report.html` - Interactive HTML report with search and sorting
 
@@ -201,7 +201,7 @@ The following properties are expected to be optional (won't cause failures):
 
 ### Adding New Assertions
 
-To add custom validation logic, create a new test in [test_property_validation.py](../test_property_validation.py):
+To add custom validation logic, create a new test in [test_property_validation.py](test_property_validation.py):
 
 ```python
 def test_custom_validation(validation_report):

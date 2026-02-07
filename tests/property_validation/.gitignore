@@ -1,6 +1,5 @@
 # Generated reports - don't commit
-report.json
-report.html
+results/
 
 # Python cache
 __pycache__/

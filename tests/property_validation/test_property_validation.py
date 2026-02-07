@@ -8,7 +8,7 @@ The test dynamically discovers entity types and properties from the codebase,
 so it automatically adapts as models evolve.
 
 Usage:
-    pytest tests/test_property_validation.py -v -s
+    pytest tests/property_validation/test_property_validation.py -v -s
 
 Environment variables required:
     NEO4J_URI - Neo4j connection URI (default: bolt://localhost:7687)
@@ -104,7 +104,8 @@ def test_generate_reports(validation_report):
     generate_console_report(validation_report)
     
     # JSON report
-    report_dir = Path(__file__).parent / "property_validation"
+    report_dir = Path(__file__).parent / "results"
+    report_dir.mkdir(exist_ok=True)
     json_path = report_dir / "report.json"
     generate_json_report(validation_report, json_path)
     

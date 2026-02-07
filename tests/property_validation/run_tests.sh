@@ -19,13 +19,13 @@ echo "🚀 Running Property Validation Tests..."
 echo ""
 
 # Run the tests with verbose output
-pytest tests/test_property_validation.py -v -s
+pytest tests/property_validation/test_property_validation.py -v -s
 
 echo ""
 echo "✅ Tests complete!"
 echo ""
 echo "📊 Reports generated:"
-echo "   - JSON: tests/property_validation/report.json"
-echo "   - HTML: tests/property_validation/report.html"
+echo "   - JSON: tests/property_validation/results/report.json"
+echo "   - HTML: tests/property_validation/results/report.html"
 echo ""
-echo "To view HTML report, open: tests/property_validation/report.html"
+echo "To view HTML report, open: tests/property_validation/results/report.html"
