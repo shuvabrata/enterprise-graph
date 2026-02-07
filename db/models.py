@@ -131,11 +131,8 @@ class Project:
     id: str
     key: str
     name: str
-    start_date: Optional[str] = None  # ISO format string (YYYY-MM-DD)
-    end_date: Optional[str] = None    # ISO format string (YYYY-MM-DD)
     status: Optional[str] = None
     project_type: Optional[str] = None  # e.g., "software", "business"
-    lead_id: Optional[str] = None  # Person ID for project lead
     url: Optional[str] = None  # URL to view the project in Jira
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
@@ -151,10 +148,6 @@ class Project:
         print(f"{'='*60}")
         print(f"  ID:          {self.id}")
         print(f"  Key:         {self.key}")
-        if self.start_date:
-            print(f"  Start Date:  {self.start_date}")
-        if self.end_date:
-            print(f"  End Date:    {self.end_date}")
         if self.status:
             print(f"  Status:      {self.status}")
         if self.project_type:
@@ -1009,16 +1002,10 @@ def merge_project(session: Session, project: Project, relationships: Optional[Li
     # Build SET clause dynamically based on available properties
     set_clauses = ["p.key = $key", "p.name = $name"]
     
-    if props.get('start_date'):
-        set_clauses.append("p.start_date = date($start_date)")
-    if props.get('end_date'):
-        set_clauses.append("p.end_date = date($end_date)")
     if 'status' in props:
         set_clauses.append("p.status = $status")
     if 'project_type' in props:
         set_clauses.append("p.project_type = $project_type")
-    if 'lead_id' in props:
-        set_clauses.append("p.lead_id = $lead_id")
     if 'url' in props:
         set_clauses.append("p.url = $url")
     

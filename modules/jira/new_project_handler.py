@@ -43,7 +43,7 @@ def new_project_handler(session, project_data, jira_base_url=None):
         if jira_base_url:
             url = f"{jira_base_url}/browse/{project_key}"
         
-        # Handle project lead to get lead_id
+        # Handle project lead - create relationship directly
         lead_id = None
         lead = project_data.get('lead')
         if lead:
@@ -56,11 +56,8 @@ def new_project_handler(session, project_data, jira_base_url=None):
             id=project_id,
             key=project_key,
             name=project_name,
-            start_date=None,  # Jira projects don't have start/end dates by default
-            end_date=None,
             status=status,
             project_type=project_type if project_type else None,
-            lead_id=lead_id,
             url=url
         )
         

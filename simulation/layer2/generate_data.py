@@ -102,9 +102,6 @@ def generate_project() -> Dict[str, Any]:
         "id": "project_engineering_2026",
         "key": "ENG-2026",
         "name": "Engineering 2026",
-        "description": "Engineering initiatives for 2026",
-        "start_date": "2026-01-01",
-        "end_date": "2026-12-31",
         "status": "Active"
     }
 
