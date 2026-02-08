@@ -61,6 +61,7 @@ def get_or_create_person(session, email, name, provider=None, external_id=None, 
     
     # Normalize email: convert empty string to None for proper NULL handling in Neo4j
     # This allows multiple users without emails (UNIQUE constraint allows multiple NULLs)
+    # NOTE: Email should already be lowercased at source (GitHub/Jira extractors)
     email = email if email else None
     
     # Determine canonical person_id

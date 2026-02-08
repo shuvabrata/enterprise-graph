@@ -49,6 +49,8 @@ def bulk_user_handler(session, collaborators, repo_id, repo_created_at, batch_si
                     # Use getattr with default to avoid API calls if properties aren't loaded
                     github_name = getattr(collaborator, 'name', None) or github_login
                     github_email = getattr(collaborator, 'email', None) or ""
+                    # Normalize email to lowercase for case-insensitive matching
+                    github_email = github_email.lower() if github_email else ""
                     logger.debug(f"          Collaborator details: name='{github_name}', email='{github_email}'")
                     
                     # Skip if not a User type

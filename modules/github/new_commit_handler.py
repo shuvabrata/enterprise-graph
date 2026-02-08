@@ -75,11 +75,15 @@ def get_or_create_commit_author(session, commit_author, person_cache: PersonCach
             github_login = commit_author.login
             github_name = commit_author.name if hasattr(commit_author, 'name') and commit_author.name else github_login
             github_email = commit_author.email if hasattr(commit_author, 'email') and commit_author.email else ""
+            # Normalize email to lowercase immediately at source
+            github_email = github_email.lower() if github_email else ""
             logger.debug(f"        Full user object: login='{github_login}', name='{github_name}', email='{github_email}'")
         elif hasattr(commit_author, 'name'):
             # Name/email only (common for commits)
             github_name = commit_author.name or "Unknown"
             github_email = commit_author.email or ""
+            # Normalize email to lowercase immediately at source
+            github_email = github_email.lower() if github_email else ""
             # Create a sanitized login from email or name
             if github_email:
                 github_login = github_email.split('@')[0]

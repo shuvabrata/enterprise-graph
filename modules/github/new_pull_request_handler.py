@@ -106,6 +106,8 @@ def get_or_create_pr_author(session, pr_user, person_cache: PersonCache):
         github_login = pr_user.login
         github_name = pr_user.name if hasattr(pr_user, 'name') and pr_user.name else github_login
         github_email = pr_user.email if hasattr(pr_user, 'email') and pr_user.email else None
+        # Normalize email to lowercase immediately at source for case-insensitive identity resolution
+        github_email = github_email.lower() if github_email else None
         
         # Use PersonCache for lookup (required for performance)
         person_id, is_new = person_cache.get_or_create_person(

@@ -20,6 +20,8 @@ def new_jira_user_handler(session, user_data, person_cache: PersonCache):
         account_id = user_data.get('accountId')
         display_name = user_data.get('displayName', '')
         email = user_data.get('emailAddress', '')
+        # Normalize email to lowercase immediately at source for case-insensitive identity resolution
+        email = email.lower() if email else ''
         
         if not account_id:
             logger.warning("      Jira user missing accountId, skipping")
