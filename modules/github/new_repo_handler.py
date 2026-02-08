@@ -5,7 +5,7 @@ from db.models import Repository, merge_repository
 
 from common.logger import logger
 
-def new_repo_handler(session: Session, repo: GitHubRepository) -> Tuple[Optional[str], Optional[str]]:
+def new_repo_handler(session: Session, repo: GitHubRepository) -> Tuple[Optional[str], str]:
     """Handle a repository by creating Repository node in Neo4j.
 
     Args:
@@ -20,7 +20,9 @@ def new_repo_handler(session: Session, repo: GitHubRepository) -> Tuple[Optional
 
         # Extract repository information
         repo_id = f"repo_{repo.name.replace('-', '_')}"
-        repo_created_at = repo.created_at.strftime("%Y-%m-%d") if repo.created_at else None
+        if not repo.created_at:
+            raise ValueError("Repository created_at is None")
+        repo_created_at = repo.created_at.strftime("%Y-%m-%d")
         logger.debug(f"      Repository details: id='{repo_id}', created_at='{repo_created_at}'")
         logger.debug(f"      Full name: '{repo.full_name}', URL: '{repo.html_url}'")
         logger.debug(f"      Language: '{repo.language}', Private: {repo.private}")

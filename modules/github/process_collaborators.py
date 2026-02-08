@@ -6,7 +6,15 @@ from modules.github.process_github_user import get_users_needing_refresh
 import os
 
 
-def process_collaborators(repo, session, repo_id, repo_created_at, processed_users_cache):
+from typing import Any, Optional
+
+def process_collaborators(
+    repo: Any,
+    session: Any,
+    repo_id: str,
+    repo_created_at: str,
+    processed_users_cache: dict
+) -> None:
     try:
         collaborators = repo.get_collaborators()
         logger.info(f"    Found {collaborators.totalCount} collaborators...")

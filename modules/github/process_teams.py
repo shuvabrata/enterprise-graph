@@ -2,7 +2,15 @@ from common.logger import logger
 from modules.github.new_team_handler import new_team_handler
 
 
-def process_teams(repo, session, repo_id, repo_created_at, processed_users_cache):
+from typing import Any
+
+def process_teams(
+    repo: Any,
+    session: Any,
+    repo_id: str,
+    repo_created_at: str,
+    processed_users_cache: dict
+) -> None:
     try:
         teams = repo.get_teams()
         for team in teams:

@@ -3,7 +3,14 @@ from modules.github.new_branch_handler import new_branch_handler
 from modules.github.get_existing_branch_metadata import get_existing_branch_metadata
 
 
-def process_branches(repo, session, repo_id, owner_login):
+from typing import Any, Optional
+
+def process_branches(
+    repo: Any,
+    session: Any,
+    repo_id: str,
+    owner_login: str
+) -> Optional[str]:
     default_branch_id = None
     try:
         branches = list(repo.get_branches())

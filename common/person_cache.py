@@ -18,6 +18,8 @@ from db.models import Person, IdentityMapping, Relationship, merge_person, merge
 from common.logger import logger
 
 
+from typing import Any
+
 class PersonCache:
     """
     In-memory cache for Person lookups during batch operations.
@@ -28,7 +30,7 @@ class PersonCache:
     Also batches IdentityMapping creation until flush() is called.
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         # Cache: email -> person_id
         self._email_cache: Dict[str, str] = {}
         
@@ -42,19 +44,19 @@ class PersonCache:
         self._flushed_persons: Set[str] = set()
         
         # Statistics
-        self.cache_hits = 0
-        self.cache_misses = 0
-        self.db_queries = 0
+        self.cache_hits: int = 0
+        self.cache_misses: int = 0
+        self.db_queries: int = 0
     
     def get_or_create_person(
         self,
-        session,
+        session: Any,
         email: Optional[str],
         name: str,
         provider: Optional[str] = None,
         external_id: Optional[str] = None,
         url: Optional[str] = None
-    ) -> Tuple[str, bool]:
+    ) -> Tuple[Optional[str], bool]:
         """
         Get existing Person by email or create a new one.
         Uses in-memory cache to avoid repeated database queries.
@@ -163,7 +165,7 @@ class PersonCache:
         username: str,
         email: str,
         last_updated_at: str
-    ):
+    ) -> None:
         """
         Queue an IdentityMapping to be created on flush.
         Only creates one mapping per person_id to avoid redundant writes.
@@ -203,7 +205,7 @@ class PersonCache:
         self._pending_identities[identity_id] = (identity, maps_to_rel)
         logger.debug(f"    Queued IdentityMapping for {person_id}")
     
-    def flush_identity_mappings(self, session):
+    def flush_identity_mappings(self, session: Any) -> None:
         """
         Create all pending IdentityMapping nodes and relationships.
         Call this after processing a batch of PRs/commits.
@@ -223,7 +225,7 @@ class PersonCache:
         self._pending_identities.clear()
         logger.info(f"✓ Flushed {count} identity mappings")
     
-    def get_stats(self) -> Dict[str, int]:
+    def get_stats(self) -> Dict[str, Any]:
         """Get cache statistics."""
         return {
             'cache_hits': self.cache_hits,
@@ -233,7 +235,7 @@ class PersonCache:
             'pending_identities': len(self._pending_identities)
         }
     
-    def clear(self):
+    def clear(self) -> None:
         """Clear all caches."""
         self._email_cache.clear()
         self._provider_cache.clear()

@@ -46,18 +46,20 @@ user_id_var = contextvars.ContextVar('user_id', default='')
 request_id_var = contextvars.ContextVar('request_id', default='')
 
 # pylint: disable=too-many-instance-attributes
-class LogContext:
-    def __init__(self, project_id: str|None = None, 
-                 user_id: str|None = None,
-                 request_id: str|None = None) -> None:
-        self.project_id = project_id
-        self.user_id = user_id
-        self.request_id = request_id
-        self.project_id_token = None
-        self.user_id_token = None
-        self.request_id_token = None
+from typing import Optional, Any, Type, Tuple
 
-    def __enter__(self):
+class LogContext:
+    def __init__(self, project_id: Optional[str] = None, 
+                 user_id: Optional[str] = None,
+                 request_id: Optional[str] = None) -> None:
+        self.project_id: Optional[str] = project_id
+        self.user_id: Optional[str] = user_id
+        self.request_id: Optional[str] = request_id
+        self.project_id_token: Optional[contextvars.Token] = None
+        self.user_id_token: Optional[contextvars.Token] = None
+        self.request_id_token: Optional[contextvars.Token] = None
+
+    def __enter__(self) -> 'LogContext':
         if self.project_id is not None:
             self.project_id_token = project_id_var.set(self.project_id)
         if self.user_id is not None:
@@ -66,7 +68,7 @@ class LogContext:
             self.request_id_token = request_id_var.set(self.request_id)
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[Any]) -> None:
         if self.project_id_token is not None:
             project_id_var.reset(self.project_id_token)
         if self.user_id_token is not None:
@@ -75,7 +77,7 @@ class LogContext:
             request_id_var.reset(self.request_id_token)
 
 class TextFormatter(logging.Formatter):
-    def format(self, record):
+    def format(self, record: logging.LogRecord) -> str:
         # Add context variables to the record
         record.project_id = project_id_var.get()
         record.user_id = user_id_var.get()
@@ -106,7 +108,7 @@ class TextFormatter(logging.Formatter):
         return super().format(record)
 
 class JsonFormatter(logging.Formatter):
-    def format(self, record):
+    def format(self, record: logging.LogRecord) -> str:
         # Get the original format data
         log_data = {           
             'level': record.levelname,
@@ -131,20 +133,24 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(log_data)
 
 class MyAppLogger(logging.Logger):
-    def __init__(self, name, level=logging.NOTSET):
+    slack_webhook_url: Optional[str]
+    slack_channel: Optional[str]
+    slack_username: str
+
+    def __init__(self, name: str, level: int = logging.NOTSET) -> None:
         super().__init__(name, level)
-        self.slack_webhook_url = os.getenv('SLACK_WEBHOOK_URL')
-        self.slack_channel = os.getenv('SLACK_CHANNEL')
-        self.slack_username = os.getenv("SLACK_USERNAME", "myapp")
-        
-    def error(self, msg, *args, **kwargs):
+        self.slack_webhook_url: Optional[str] = os.getenv('SLACK_WEBHOOK_URL')
+        self.slack_channel: Optional[str] = os.getenv('SLACK_CHANNEL')
+        self.slack_username: str = os.getenv("SLACK_USERNAME", "myapp")
+
+    def error(self, msg: Any, *args: Any, **kwargs: Any) -> None:
         super().error(msg, *args, **kwargs)
-        
+
         if isinstance(msg, Exception):
-            error_message = str(msg)
-            stack_trace = ''.join(traceback.format_exception(type(msg), msg, msg.__traceback__))
+            error_message: str = str(msg)
+            stack_trace: str = ''.join(traceback.format_exception(type(msg), msg, msg.__traceback__))
             if LOG_FORMAT == "JSON":
-                value = json.dumps({
+                value: str = json.dumps({
                     "error": error_message,
                     "stack_trace": stack_trace,
                     "project_id": project_id_var.get(),
@@ -154,11 +160,11 @@ class MyAppLogger(logging.Logger):
             else:
                 value = f"Error: {error_message}\n\nStack Trace:\n{stack_trace}"
         else:
-            value = json.dumps(msg) if LOG_FORMAT == "JSON" else str(msg)
-            
+            value: str = json.dumps(msg) if LOG_FORMAT == "JSON" else str(msg)
+
         if self.slack_webhook_url:
             try:
-                payload = {
+                payload: dict = {
                     'channel': self.slack_channel,
                     'username': self.slack_username,
                     "text": "ERROR",
@@ -171,7 +177,7 @@ class MyAppLogger(logging.Logger):
                         }]
                     }]
                 }
-                headers = {'Content-Type': 'application/json'}
+                headers: dict = {'Content-Type': 'application/json'}
                 requests.post(
                     self.slack_webhook_url,
                     data=json.dumps(payload),
@@ -185,7 +191,7 @@ class MyAppLogger(logging.Logger):
 if os.getenv("ENABLE_SLACK_NOTIFICATION") == '1':
     logging.setLoggerClass(SecopsLogger)
 
-def get_formatter():
+def get_formatter() -> logging.Formatter:
     if LOG_FORMAT == "JSON":
         return JsonFormatter()
     return TextFormatter()

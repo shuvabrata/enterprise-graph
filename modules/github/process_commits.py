@@ -9,7 +9,17 @@ import os
 from datetime import datetime, timedelta
 
 
-def process_commits(repo, session, repo_id, default_branch_id, branch_patterns, extraction_sources, person_cache):
+from typing import Any, Sequence
+
+def process_commits(
+    repo: Any,
+    session: Any,
+    repo_id: str,
+    default_branch_id: str,
+    branch_patterns: Sequence[str],
+    extraction_sources: Sequence[str],
+    person_cache: Any
+) -> None:
     if default_branch_id:
         try:
             last_synced = get_last_synced_at(session, repo_id)

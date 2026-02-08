@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
 from common.logger import logger
  
-def get_last_synced_at(session, repo_id):
+from typing import Any, Optional
+
+def get_last_synced_at(session: Any, repo_id: str) -> Optional[datetime]:
     """Get the last_synced_at timestamp from Repository node.
 
     Args:
@@ -22,7 +24,7 @@ def get_last_synced_at(session, repo_id):
         return result['last_synced_at'].to_native()
     return None
 
-def update_last_synced_at(session, repo_id):
+def update_last_synced_at(session: Any, repo_id: str) -> None:
     """Update the last_synced_at timestamp on Repository node.
     
     Args:

@@ -9,7 +9,15 @@ import os
 from datetime import datetime, timedelta, timezone
 
 
-def process_pull_requests(repo, session, repo_id, repo_obj, person_cache):
+from typing import Any
+
+def process_pull_requests(
+    repo: Any,
+    session: Any,
+    repo_id: str,
+    repo_obj: Any,
+    person_cache: Any
+) -> None:
     try:
         last_synced = get_last_synced_at(session, repo_id)
         if last_synced:

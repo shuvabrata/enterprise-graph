@@ -15,7 +15,7 @@ from common.logger import logger, LogContext
 from modules.github.repo_last_synced_at import update_last_synced_at
 
 
-def create_repository_node(session: Session, repo: Repository) -> Tuple[Optional[str], Optional[str]]:
+def create_repository_node(session: Session, repo: Repository) -> Tuple[Optional[str], str]:
     return new_repo_handler(session, repo)
 
 def flush_person_cache(person_cache: PersonCache, session: Session) -> None:
@@ -56,7 +56,12 @@ def process_repo_(repo: Repository, session: Session, repo_config: Optional[Dict
     process_teams(repo, session, repo_id, repo_created_at, processed_users_cache)
     default_branch_id = process_branches(repo, session, repo_id, repo.owner.login)
     person_cache = PersonCache()
-    process_commits(repo, session, repo_id, default_branch_id, branch_patterns, extraction_sources, person_cache)
+
+    if default_branch_id:
+        # Its possible that nothing has changed in default branch since last sync, 
+        # so we should only process commits if there are new commits to process
+        process_commits(repo, session, repo_id, default_branch_id, branch_patterns, extraction_sources, person_cache)
+        
     process_pull_requests(repo, session, repo_id, repo, person_cache)
     flush_person_cache(person_cache, session)
     update_last_synced_at(session, repo_id)
