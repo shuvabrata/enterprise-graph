@@ -120,7 +120,8 @@ def generate_engineers() -> List[Dict[str, Any]]:
                 "role": "Engineer",
                 "seniority": seniority,
                 "hire_date": generate_hire_date(seniority),
-                "is_manager": False
+                "is_manager": False,
+                "url": f"https://github.com/{generate_github_username(name)}"
             }
             engineers.append(person)
     
@@ -146,7 +147,8 @@ def generate_managers() -> List[Dict[str, Any]]:
             "role": "Manager",
             "seniority": "Manager",
             "hire_date": generate_hire_date("Senior"),
-            "is_manager": True
+            "is_manager": True,
+            "url": f"https://github.com/{generate_github_username(name)}"
         }
         managers.append(manager)
     
@@ -171,7 +173,8 @@ def generate_pms() -> List[Dict[str, Any]]:
             "role": "Product Manager",
             "seniority": "Senior" if i == 0 else "Mid",
             "hire_date": generate_hire_date("Senior" if i == 0 else "Mid"),
-            "is_manager": False
+            "is_manager": False,
+            "url": f"https://github.com/{generate_github_username(name)}"
         }
         pms.append(pm)
     
@@ -182,12 +185,14 @@ def generate_teams() -> List[Dict[str, Any]]:
     teams = []
     
     for i, team_config in enumerate(TEAMS):
+        team_slug = team_config['name'].lower().replace(' ', '_').replace('team', '').strip('_')
         team = {
             "id": f"team_{team_config['name'].lower().replace(' ', '_')}",
             "name": team_config['name'],
             "focus_area": team_config['focus'],
             "target_size": team_config['size'],
-            "created_at": "2024-01-01"
+            "created_at": "2024-01-01",
+            "url": f"https://github.com/orgs/company/teams/{team_slug}"
         }
         teams.append(team)
     

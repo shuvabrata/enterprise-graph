@@ -77,7 +77,8 @@ def process_github_user(session, github_user, processed_users_cache=None):
         
         github_name = github_user.name if hasattr(github_user, 'name') and github_user.name else github_login
         github_email = github_user.email if hasattr(github_user, 'email') and github_user.email else ""
-        logger.debug(f"        User details: name='{github_name}', email='{github_email}'")
+        github_url = github_user.html_url if hasattr(github_user, 'html_url') and github_user.html_url else f"https://github.com/{github_login}"
+        logger.debug(f"        User details: name='{github_name}', email='{github_email}', url='{github_url}'")
 
         # Get or create Person using email-based identity resolution
         # This ensures a single Person node per individual across all systems
@@ -86,7 +87,8 @@ def process_github_user(session, github_user, processed_users_cache=None):
             email=github_email if github_email else None,
             name=github_name,
             provider="github",
-            external_id=github_login
+            external_id=github_login,
+            url=github_url
         )
         
         if not person_id:

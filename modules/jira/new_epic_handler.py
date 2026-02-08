@@ -106,7 +106,8 @@ def new_epic_handler(session, issue_data, initiative_id_map, jira_base_url=None,
             status=status,
             start_date=start_date or created,  # Fallback to created if no start_date
             due_date=due_date if due_date else '',  # Empty string if no due date
-            created_at=created
+            created_at=created,
+            url=url
         )
         
         relationships = []

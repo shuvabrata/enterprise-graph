@@ -43,6 +43,12 @@ def new_sprint_handler(session, sprint_data, jira_base_url=None):
         start_date = sprint_data.get('startDate', '')[:10] if sprint_data.get('startDate') else ''
         end_date = sprint_data.get('endDate', '')[:10] if sprint_data.get('endDate') else ''
         
+        # Construct URL if possible
+        # Note: Sprint URLs in Jira are complex and typically require board ID
+        # The API doesn't provide a direct browse URL, so we leave it as None
+        # A full URL would be: {jira_base_url}/secure/RapidBoard.jspa?rapidView={board_id}&sprint={sprint_id}
+        url = None
+        
         # Create Sprint object
         sprint = Sprint(
             id=sprint_id,
@@ -50,7 +56,8 @@ def new_sprint_handler(session, sprint_data, jira_base_url=None):
             goal=goal,
             start_date=start_date,
             end_date=end_date,
-            status=status
+            status=status,
+            url=url
         )
         
         # Merge sprint into Neo4j

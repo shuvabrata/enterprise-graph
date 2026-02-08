@@ -15,7 +15,7 @@ from db.models import Person, merge_person
 from common.logger import logger
 
 
-def get_or_create_person(session, email, name, provider=None, external_id=None):
+def get_or_create_person(session, email, name, provider=None, external_id=None, url=None):
     """
     Get existing Person by email or create a new one.
     
@@ -29,6 +29,7 @@ def get_or_create_person(session, email, name, provider=None, external_id=None):
         name: Display name or full name
         provider: System name ('github', 'jira', etc.) - used for fallback ID
         external_id: External system ID - used for fallback ID when no email
+        url: URL to user profile (preferably GitHub profile URL)
         
     Returns:
         tuple: (person_id, is_new)
@@ -42,7 +43,8 @@ def get_or_create_person(session, email, name, provider=None, external_id=None):
             email="alice@company.com",
             name="Alice Smith",
             provider="github",
-            external_id="alice"
+            external_id="alice",
+            url="https://github.com/alice"
         )
         # Returns: ("person_alice@company.com", True/False)
         
@@ -104,7 +106,8 @@ def get_or_create_person(session, email, name, provider=None, external_id=None):
         role="",
         seniority="",
         hire_date="",
-        is_manager=False
+        is_manager=False,
+        url=url
     )
     
     merge_person(session, person)

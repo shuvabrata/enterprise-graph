@@ -21,6 +21,10 @@ def new_team_handler(session, team, repo_id, repo_created_at, processed_users_ca
         logger.info(f"    Processing team: {team_name} ({team_slug})")
         logger.debug(f"      Team permission from GitHub: {team.permission}")
 
+        # Extract team URL (GitHub API provides html_url)
+        team_url = team.html_url if hasattr(team, 'html_url') and team.html_url else None
+        logger.debug(f"      Team URL: {team_url}")
+
         # Map GitHub permission to general READ/WRITE
         # GitHub team permissions: pull, push, admin, maintain, triage
         permission_mapping = {
@@ -41,7 +45,8 @@ def new_team_handler(session, team, repo_id, repo_created_at, processed_users_ca
             name=team_name,
             focus_area="",  # GitHub API doesn't provide this
             target_size=0,   # GitHub API doesn't provide this
-            created_at=repo_created_at  # Use repo creation as proxy
+            created_at=repo_created_at,  # Use repo creation as proxy
+            url=team_url
         )
 
         # Create COLLABORATOR relationship from Team to Repository

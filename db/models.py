@@ -23,6 +23,7 @@ class Person:
     seniority: str
     hire_date: str  # ISO format string (YYYY-MM-DD)
     is_manager: bool
+    url: Optional[str] = None
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
         """Convert to Neo4j properties with proper type conversion."""
@@ -41,6 +42,8 @@ class Person:
         print(f"  Seniority:  {self.seniority}")
         print(f"  Hire Date:  {self.hire_date}")
         print(f"  Is Manager: {self.is_manager}")
+        if self.url:
+            print(f"  URL:        {self.url}")
         print(f"{'='*60}\n")
 
 
@@ -52,6 +55,7 @@ class Team:
     focus_area: str
     target_size: int
     created_at: str  # ISO format string (YYYY-MM-DD)
+    url: Optional[str] = None
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
         """Convert to Neo4j properties with proper type conversion."""
@@ -66,6 +70,8 @@ class Team:
         print(f"  Focus Area:  {self.focus_area}")
         print(f"  Target Size: {self.target_size}")
         print(f"  Created At:  {self.created_at}")
+        if self.url:
+            print(f"  URL:         {self.url}")
         print(f"{'='*60}\n")
 
 
@@ -276,6 +282,7 @@ class Epic:
     start_date: str   # ISO format string (YYYY-MM-DD)
     due_date: str     # ISO format string (YYYY-MM-DD)
     created_at: str   # ISO format string (YYYY-MM-DD)
+    url: Optional[str] = None
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
         """Convert to Neo4j properties."""
@@ -293,6 +300,8 @@ class Epic:
         print(f"  Start Date:  {self.start_date}")
         print(f"  Due Date:    {self.due_date}")
         print(f"  Created At:  {self.created_at}")
+        if self.url:
+            print(f"  URL:         {self.url}")
         print(f"{'='*60}\n")
 
 
@@ -334,6 +343,7 @@ class Issue:
     status: str
     story_points: int
     created_at: str   # ISO format string (YYYY-MM-DD)
+    url: Optional[str] = None
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
         """Convert to Neo4j properties."""
@@ -350,6 +360,8 @@ class Issue:
         print(f"  Status:        {self.status}")
         print(f"  Story Points:  {self.story_points}")
         print(f"  Created At:    {self.created_at}")
+        if self.url:
+            print(f"  URL:           {self.url}")
         print(f"{'='*60}\n")
 
 
@@ -373,6 +385,7 @@ class Sprint:
     start_date: str   # ISO format string (YYYY-MM-DD)
     end_date: str     # ISO format string (YYYY-MM-DD)
     status: str
+    url: Optional[str] = None
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
         """Convert to Neo4j properties."""
@@ -388,6 +401,8 @@ class Sprint:
         print(f"  Start Date: {self.start_date}")
         print(f"  End Date:   {self.end_date}")
         print(f"  Status:     {self.status}")
+        if self.url:
+            print(f"  URL:        {self.url}")
         print(f"{'='*60}\n")
 
 
@@ -890,6 +905,8 @@ def merge_person(session: Session, person: Person, relationships: Optional[List[
     # Only set hire_date if not empty
     if props.get('hire_date'):
         set_clauses.append("p.hire_date = date($hire_date)")
+    if 'url' in props:
+        set_clauses.append("p.url = $url")
     
     query = f"""
     MERGE (p:Person {{id: $id}})
@@ -931,6 +948,8 @@ def merge_team(session: Session, team: Team, relationships: Optional[List[Relati
     # Only set created_at if it's not empty
     if props.get('created_at'):
         set_clauses.append("t.created_at = date($created_at)")
+    if 'url' in props:
+        set_clauses.append("t.url = $url")
     
     # MERGE the Team node
     query = f"""
@@ -1100,6 +1119,8 @@ def merge_epic(session: Session, epic: Epic, relationships: Optional[List[Relati
         set_clauses.append("e.due_date = date($due_date)")
     if props.get('created_at'):
         set_clauses.append("e.created_at = date($created_at)")
+    if 'url' in props:
+        set_clauses.append("e.url = $url")
     
     # MERGE the Epic node
     query = f"""
@@ -1145,6 +1166,8 @@ def merge_issue(session: Session, issue: Issue, relationships: Optional[List[Rel
     # Only set created_at if it's not empty
     if props.get('created_at'):
         set_clauses.append("i.created_at = date($created_at)")
+    if 'url' in props:
+        set_clauses.append("i.url = $url")
     
     # MERGE the Issue node
     query = f"""
@@ -1184,6 +1207,8 @@ def merge_sprint(session: Session, sprint: Sprint, relationships: Optional[List[
         set_clauses.append("s.start_date = date($start_date)")
     if props.get('end_date'):
         set_clauses.append("s.end_date = date($end_date)")
+    if 'url' in props:
+        set_clauses.append("s.url = $url")
     
     # MERGE the Sprint node
     query = f"""

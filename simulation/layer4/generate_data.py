@@ -103,7 +103,8 @@ def generate_sprints() -> List[Dict[str, Any]]:
             "goal": sprint_def['goal'],
             "start_date": sprint_def['start_date'],
             "end_date": sprint_def['end_date'],
-            "status": "Completed" if idx < 4 else "Active"
+            "status": "Completed" if idx < 4 else "Active",
+            "url": None  # Sprint URLs are complex in Jira, leaving as None
         }
         sprints.append(sprint)
     return sprints
@@ -181,7 +182,8 @@ def generate_story_for_epic(epic: Dict, epic_index: int, story_num: int,
         "created_at": created_at.strftime("%Y-%m-%d"),
         "epic_id": epic['id'],
         "assignee_id": assignee['id'],
-        "reporter_id": reporter['id']
+        "reporter_id": reporter['id'],
+        "url": f"https://yoursite.atlassian.net/browse/{story_key}"
     }
     
     return story
@@ -242,7 +244,8 @@ def generate_bugs(stories: List[Dict], people: List[Dict]) -> List[Dict[str, Any
             "epic_id": story['epic_id'],
             "assignee_id": story['assignee_id'],  # Same assignee as story
             "reporter_id": story['reporter_id'],
-            "related_story_id": story['id']  # Link to story
+            "related_story_id": story['id'],  # Link to story
+            "url": f"https://yoursite.atlassian.net/browse/{bug_key}"
         }
         bugs.append(bug)
     
@@ -274,7 +277,8 @@ def generate_bugs(stories: List[Dict], people: List[Dict]) -> List[Dict[str, Any
             "created_at": (datetime.now() - timedelta(days=random.randint(5, 60))).strftime("%Y-%m-%d"),
             "epic_id": epic,
             "assignee_id": assignee['id'],
-            "reporter_id": reporter['id']
+            "reporter_id": reporter['id'],
+            "url": f"https://yoursite.atlassian.net/browse/{bug_key}"
         }
         bugs.append(bug)
     
@@ -320,7 +324,8 @@ def generate_tasks(epics: List[Dict], people: List[Dict]) -> List[Dict[str, Any]
             "created_at": (datetime.now() - timedelta(days=random.randint(10, 45))).strftime("%Y-%m-%d"),
             "epic_id": epic['id'],
             "assignee_id": assignee['id'],
-            "reporter_id": reporter['id']
+            "reporter_id": reporter['id'],
+            "url": f"https://yoursite.atlassian.net/browse/{task_key}"
         }
         tasks.append(task)
     

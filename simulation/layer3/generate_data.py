@@ -213,7 +213,8 @@ def generate_epics(initiatives: List[Dict[str, Any]],
                 "created_at": "2025-11-15",
                 "initiative_id": initiative['id'],
                 "assignee_id": owner['id'],
-                "team_id": team_id
+                "team_id": team_id,
+                "url": f"https://yoursite.atlassian.net/browse/{epic_def['key']}"
             }
             all_epics.append(epic)
     

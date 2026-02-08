@@ -57,6 +57,11 @@ def new_issue_handler(session, issue_data, epic_id_map, sprint_id_map, jira_conn
                 except (ValueError, TypeError):
                     pass
         
+        # Construct URL to view the issue in Jira browser
+        url = None
+        if jira_base_url:
+            url = f"{jira_base_url}/browse/{issue_key}"
+        
         # Create Issue object
         issue = Issue(
             id=issue_id,
@@ -66,7 +71,8 @@ def new_issue_handler(session, issue_data, epic_id_map, sprint_id_map, jira_conn
             priority=priority,
             status=status,
             story_points=story_points,
-            created_at=created
+            created_at=created,
+            url=url
         )
         
         # Build relationships
