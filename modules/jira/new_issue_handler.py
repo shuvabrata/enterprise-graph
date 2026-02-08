@@ -2,10 +2,12 @@ import os
 from db.models import Issue, Relationship, merge_issue
 from modules.jira.new_jira_user_handler import new_jira_user_handler
 from modules.jira.team_stub_handler import get_or_create_team_stub
+from common.person_cache import PersonCache
 from common.logger import logger
 
 
-def new_issue_handler(session, issue_data, epic_id_map, sprint_id_map, jira_connection=None, jira_base_url=None):
+def new_issue_handler(session, issue_data, epic_id_map, sprint_id_map, person_cache: PersonCache,
+                     jira_connection=None, jira_base_url=None):
     """Handle a Jira issue (all types) by creating Issue node and relationships.
 
     Args:
@@ -13,6 +15,7 @@ def new_issue_handler(session, issue_data, epic_id_map, sprint_id_map, jira_conn
         issue_data: Jira issue object from API
         epic_id_map: Dictionary mapping Jira epic issue IDs to Neo4j epic IDs
         sprint_id_map: Dictionary mapping Jira sprint IDs to Neo4j sprint IDs
+        person_cache: PersonCache for batch operations (required for performance)
         jira_connection: Jira API connection object (for fetching additional data)
         jira_base_url: Base URL of Jira instance (e.g., "https://yoursite.atlassian.net")
 
@@ -117,7 +120,7 @@ def new_issue_handler(session, issue_data, epic_id_map, sprint_id_map, jira_conn
         # 2. ASSIGNED_TO -> Person
         assignee = fields.get('assignee')
         if assignee:
-            assignee_id = new_jira_user_handler(session, assignee)
+            assignee_id = new_jira_user_handler(session, assignee, person_cache)
             if assignee_id:
                 relationships.append(Relationship(
                     type="ASSIGNED_TO",
@@ -130,7 +133,7 @@ def new_issue_handler(session, issue_data, epic_id_map, sprint_id_map, jira_conn
         # 3. REPORTED_BY -> Person
         reporter = fields.get('reporter')
         if reporter:
-            reporter_id = new_jira_user_handler(session, reporter)
+            reporter_id = new_jira_user_handler(session, reporter, person_cache)
             if reporter_id:
                 relationships.append(Relationship(
                     type="REPORTED_BY",

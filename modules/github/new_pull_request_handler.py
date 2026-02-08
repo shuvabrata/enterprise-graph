@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 
-from db.models import PullRequest, Branch, Relationship, IdentityMapping, merge_pull_request, merge_branch, merge_relationship, merge_identity_mapping
+from db.models import PullRequest, Branch, Relationship, merge_pull_request, merge_branch, merge_relationship
 from modules.github.retry_with_backoff import retry_with_backoff
-from common.identity_resolver import get_or_create_person
+from common.person_cache import PersonCache
 from common.logger import logger
 
 def create_or_get_external_branch(session, repo_name, head_ref, pr_number):
@@ -86,14 +86,14 @@ def create_or_get_external_branch(session, repo_name, head_ref, pr_number):
         return None
 
 
-def get_or_create_pr_author(session, pr_user):
+def get_or_create_pr_author(session, pr_user, person_cache: PersonCache):
     """
-    Get or create Person for PR author.
-    Uses similar logic to commit author creation.
+    Get or create Person for PR author using PersonCache.
     
     Args:
         session: Neo4j session
         pr_user: GitHub User object
+        person_cache: PersonCache for batch operations (required for performance)
         
     Returns:
         str: Person ID
@@ -107,8 +107,8 @@ def get_or_create_pr_author(session, pr_user):
         github_name = pr_user.name if hasattr(pr_user, 'name') and pr_user.name else github_login
         github_email = pr_user.email if hasattr(pr_user, 'email') and pr_user.email else None
         
-        # Use identity resolver for proper email-based deduplication
-        person_id, is_new = get_or_create_person(
+        # Use PersonCache for lookup (required for performance)
+        person_id, is_new = person_cache.get_or_create_person(
             session,
             email=github_email,
             name=github_name,
@@ -116,27 +116,16 @@ def get_or_create_pr_author(session, pr_user):
             external_id=github_login
         )
         
-        # Create IdentityMapping node for GitHub
+        # Queue IdentityMapping creation (batched on flush)
         identity_id = f"identity_github_{github_login}"
-        identity = IdentityMapping(
-            id=identity_id,
+        person_cache.queue_identity_mapping(
+            person_id=person_id,
+            identity_id=identity_id,
             provider="GitHub",
             username=github_login,
             email=github_email if github_email else "",
             last_updated_at=datetime.now(timezone.utc).isoformat()
         )
-        
-        # Create MAPS_TO relationship from IdentityMapping to Person
-        maps_to_relationship = Relationship(
-            type="MAPS_TO",
-            from_id=identity.id,
-            to_id=person_id,
-            from_type="IdentityMapping",
-            to_type="Person"
-        )
-        
-        # Merge IdentityMapping node with MAPS_TO relationship
-        merge_identity_mapping(session, identity, relationships=[maps_to_relationship])
         
         return person_id
         
@@ -146,7 +135,7 @@ def get_or_create_pr_author(session, pr_user):
         return "person_github_unknown"
 
 
-def new_pull_request_handler(session, repo, pr, repo_id, repo_owner=None):
+def new_pull_request_handler(session, repo, pr, repo_id, repo_owner, person_cache: PersonCache):
     """
     Handle a pull request by creating PullRequest node and all relationships.
     
@@ -164,7 +153,8 @@ def new_pull_request_handler(session, repo, pr, repo_id, repo_owner=None):
         repo: GitHub repository object
         pr: GitHub PullRequest object
         repo_id: Repository ID
-        repo_owner: GitHub repository owner (optional, for URL generation)
+        repo_owner: GitHub repository owner (for URL generation)
+        person_cache: PersonCache for batch operations (required for performance)
         
     Returns:
         bool: True if successful, False otherwise
@@ -262,7 +252,7 @@ def new_pull_request_handler(session, repo, pr, repo_id, repo_owner=None):
             relationships_created += 1
         
         # 3. CREATED_BY relationship (PR author)
-        author_id = get_or_create_pr_author(session, pr.user)
+        author_id = get_or_create_pr_author(session, pr.user, person_cache)
         created_by_rel = Relationship(
             type="CREATED_BY",
             from_id=pr_id,
@@ -281,7 +271,7 @@ def new_pull_request_handler(session, repo, pr, repo_id, repo_owner=None):
             reviewer_states = {}
             for review in reviews:
                 if review.user:
-                    reviewer_id = get_or_create_pr_author(session, review.user)
+                    reviewer_id = get_or_create_pr_author(session, review.user, person_cache)
                     # Keep the most recent review state for each reviewer
                     # States: APPROVED, CHANGES_REQUESTED, COMMENTED, DISMISSED
                     if review.state in ["APPROVED", "CHANGES_REQUESTED", "COMMENTED"]:
@@ -310,7 +300,7 @@ def new_pull_request_handler(session, repo, pr, repo_id, repo_owner=None):
             requested_reviewers = pr.requested_reviewers or []
             
             for reviewer in requested_reviewers:
-                reviewer_id = get_or_create_pr_author(session, reviewer)
+                reviewer_id = get_or_create_pr_author(session, reviewer, person_cache)
                 requested_reviewer_rel = Relationship(
                     type="REQUESTED_REVIEWER",
                     from_id=pr_id,
@@ -327,7 +317,7 @@ def new_pull_request_handler(session, repo, pr, repo_id, repo_owner=None):
         
         # 6. MERGED_BY relationship (only for merged PRs)
         if state == "merged" and pr.merged_by:
-            merger_id = get_or_create_pr_author(session, pr.merged_by)
+            merger_id = get_or_create_pr_author(session, pr.merged_by, person_cache)
             merged_by_rel = Relationship(
                 type="MERGED_BY",
                 from_id=pr_id,

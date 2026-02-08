@@ -1,16 +1,17 @@
 from db.models import Initiative, Relationship, merge_initiative
 from modules.jira.new_jira_user_handler import new_jira_user_handler
-
+from common.person_cache import PersonCache
 from common.logger import logger
 
 
-def new_initiative_handler(session, issue_data, project_id_map, jira_connection=None, jira_base_url=None, initiative_id_map=None, processed_epics=None):
+def new_initiative_handler(session, issue_data, project_id_map, person_cache: PersonCache, jira_connection=None, jira_base_url=None, initiative_id_map=None, processed_epics=None):
     """Handle a Jira initiative by creating Initiative node and relationships.
 
     Args:
         session: Neo4j session
         issue_data: Jira issue object from API
         project_id_map: Dictionary mapping Jira project keys to Neo4j project IDs
+        person_cache: PersonCache for batch operations (required for performance)
         jira_connection: Jira API connection object (for fetching child epics)
         jira_base_url: Base URL of Jira instance (e.g., "https://yoursite.atlassian.net")
         initiative_id_map: Dictionary mapping Jira issue IDs to Neo4j initiative IDs
@@ -87,7 +88,7 @@ def new_initiative_handler(session, issue_data, project_id_map, jira_connection=
         assignee = fields.get('assignee')
         if assignee:
             logger.debug(f"    Processing assignee: {assignee.get('displayName')}")
-            assignee_person_id = new_jira_user_handler(session, assignee)
+            assignee_person_id = new_jira_user_handler(session, assignee, person_cache)
             
             if assignee_person_id:
                 relationships.append(Relationship(
@@ -102,7 +103,7 @@ def new_initiative_handler(session, issue_data, project_id_map, jira_connection=
         reporter = fields.get('reporter')
         if reporter:
             logger.debug(f"    Processing reporter: {reporter.get('displayName')}")
-            reporter_person_id = new_jira_user_handler(session, reporter)
+            reporter_person_id = new_jira_user_handler(session, reporter, person_cache)
             
             if reporter_person_id:
                 relationships.append(Relationship(
@@ -164,6 +165,7 @@ def new_initiative_handler(session, issue_data, project_id_map, jira_connection=
                                     session, 
                                     child_epic_data, 
                                     initiative_id_map,
+                                    person_cache,
                                     jira_base_url=jira_base_url,
                                     processed_epics=processed_epics
                                 )

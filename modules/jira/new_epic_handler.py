@@ -2,17 +2,18 @@ import os
 from db.models import Epic, Relationship, merge_epic
 from modules.jira.new_jira_user_handler import new_jira_user_handler
 from modules.jira.team_stub_handler import get_or_create_team_stub
-
+from common.person_cache import PersonCache
 from common.logger import logger
 
 
-def new_epic_handler(session, issue_data, initiative_id_map, jira_base_url=None, processed_epics=None):
+def new_epic_handler(session, issue_data, initiative_id_map, person_cache: PersonCache, jira_base_url=None, processed_epics=None):
     """Handle a Jira epic by creating Epic node and relationships.
 
     Args:
         session: Neo4j session
         issue_data: Jira issue object from API
         initiative_id_map: Dictionary mapping Jira issue IDs to Neo4j initiative IDs
+        person_cache: PersonCache for batch operations (required for performance)
         jira_base_url: Base URL of Jira instance (e.g., "https://yoursite.atlassian.net")
         processed_epics: Set of already processed epic IDs to avoid duplicates
 
@@ -116,7 +117,7 @@ def new_epic_handler(session, issue_data, initiative_id_map, jira_base_url=None,
         assignee = fields.get('assignee')
         if assignee:
             logger.debug(f"    Processing assignee: {assignee.get('displayName')}")
-            assignee_person_id = new_jira_user_handler(session, assignee)
+            assignee_person_id = new_jira_user_handler(session, assignee, person_cache)
             
             if assignee_person_id:
                 relationships.append(Relationship(

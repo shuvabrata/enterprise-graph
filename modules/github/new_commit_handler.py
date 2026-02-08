@@ -2,10 +2,10 @@ import re
 from datetime import datetime, timezone
 from typing import Optional, List
 
-from db.models import Commit, IdentityMapping, Relationship, merge_commit, merge_identity_mapping, merge_relationship
+from db.models import Commit, Relationship, merge_commit, merge_relationship
 from modules.github.new_file_handler import new_file_handler
 from modules.github.retry_with_backoff import retry_with_backoff
-from common.identity_resolver import get_or_create_person
+from common.person_cache import PersonCache
 from common.logger import logger
 
 def is_commit_fully_synced(session, commit_id, commit_sha):
@@ -53,14 +53,14 @@ def mark_commit_fully_synced(session, commit_id):
     session.run(query, commit_id=commit_id)
 
 
-def get_or_create_commit_author(session, commit_author, repo_created_at):
+def get_or_create_commit_author(session, commit_author, person_cache: PersonCache):
     """
-    Get or create Person and IdentityMapping for a commit author.
+    Get or create Person for a commit author using PersonCache.
     
     Args:
         session: Neo4j session
         commit_author: GitHub commit author object
-        repo_created_at: Repository creation date for fallback timestamp
+        person_cache: PersonCache for batch operations (required for performance)
         
     Returns:
         str: Person ID for the author
@@ -93,13 +93,13 @@ def get_or_create_commit_author(session, commit_author, repo_created_at):
             github_email = ""
             logger.debug(f"        Unknown author format, using fallback values")
         
-        logger.debug(f"        Using identity resolver for: {github_login}, {github_email}")
+        logger.debug(f"        Using PersonCache for lookup: {github_login}, {github_email}")
         
-        # Use identity resolver for proper email-based deduplication
+        # Use PersonCache for lookup (required for performance)
         # Convert empty string email to None for proper NULL handling
         email = github_email if github_email else None
         
-        person_id, is_new = get_or_create_person(
+        person_id, is_new = person_cache.get_or_create_person(
             session,
             email=email,
             name=github_name,
@@ -107,29 +107,16 @@ def get_or_create_commit_author(session, commit_author, repo_created_at):
             external_id=github_login
         )
         
-        # Create IdentityMapping node for GitHub
+        # Queue IdentityMapping creation (batched on flush)
         identity_id = f"identity_github_{github_login}"
-        identity = IdentityMapping(
-            id=identity_id,
+        person_cache.queue_identity_mapping(
+            person_id=person_id,
+            identity_id=identity_id,
             provider="GitHub",
             username=github_login,
             email=github_email,
             last_updated_at=datetime.now(timezone.utc).isoformat()
         )
-        
-        # Create MAPS_TO relationship from IdentityMapping to Person
-        logger.debug(f"        Creating MAPS_TO relationship: {identity_id} -> {person_id}")
-        maps_to_relationship = Relationship(
-            type="MAPS_TO",
-            from_id=identity.id,
-            to_id=person_id,
-            from_type="IdentityMapping",
-            to_type="Person"
-        )
-        
-        # Merge IdentityMapping node with MAPS_TO relationship
-        logger.debug(f"        Merging IdentityMapping node with MAPS_TO relationship")
-        merge_identity_mapping(session, identity, relationships=[maps_to_relationship])
         
         if is_new:
             logger.info(f"      ✓ Created commit author: {github_name} ({github_login})")
@@ -247,7 +234,8 @@ def get_or_create_issue_stub(session, issue_key):
     return issue_id
 
 
-def new_commit_handler(session, repo_name, commit, branch_id, repo_owner=None, branch_name="main",
+def new_commit_handler(session, repo_name, commit, branch_id, repo_owner, branch_name,
+                       person_cache: PersonCache,
                        branch_patterns: Optional[List[str]] = None,
                        extraction_sources: Optional[List[str]] = None):
     """
@@ -258,8 +246,9 @@ def new_commit_handler(session, repo_name, commit, branch_id, repo_owner=None, b
         repo_name: Repository name for ID generation
         commit: GitHub commit object
         branch_id: Branch ID this commit belongs to
-        repo_owner: GitHub repository owner (optional, for file URLs)
-        branch_name: Branch name (default: "main")
+        repo_owner: GitHub repository owner (for file URLs)
+        branch_name: Branch name
+        person_cache: PersonCache for batch operations (required for performance)
         branch_patterns: Optional list of regex patterns for extracting issue keys from branch names
         extraction_sources: Optional list of sources to extract from ("branch", "commit_message")
 
@@ -300,7 +289,7 @@ def new_commit_handler(session, repo_name, commit, branch_id, repo_owner=None, b
 
         # Get or create commit author
         commit_author = commit.author if commit.author else commit.commit.author
-        author_person_id = get_or_create_commit_author(session, commit_author, commit_timestamp[:10])
+        author_person_id = get_or_create_commit_author(session, commit_author, person_cache)
 
         # Generate GitHub URL if owner is provided
         github_url = None

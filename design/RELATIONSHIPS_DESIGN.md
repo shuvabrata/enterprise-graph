@@ -47,20 +47,11 @@ These relationships use the **exact same name** in both directions because they 
 |------------------|-------|---------|
 | `ASSIGNED_TO` | Work assignment | Issue ↔ Person, Epic ↔ Person, Initiative ↔ Person |
 | `MEMBER_OF` | Team membership | Person ↔ Team |
-| `TEAM` | Team ownership | Epic ↔ Team |
+| `TEAM` | Team ownership | Epic ↔ Team, Issue ↔ Team |
 | `COLLABORATOR` | Repository access | Person/Team ↔ Repository |
 | `BRANCH_OF` | Branch relationship | Branch ↔ Repository |
 | `REPORTED_BY` | Issue/work reporting | Issue/Initiative ↔ Person |
 | `AUTHORED_BY` | Code authorship | Commit ↔ Person |
-| `MODIFIES` | File modifications | Commit ↔ File |
-| `REFERENCES` | Issue references | Commit ↔ Issue |
-| `CREATED_BY` | PR creation | PullRequest ↔ Person |
-| `REVIEWED_BY` | PR reviews | PullRequest ↔ Person |
-| `REQUESTED_REVIEWER` | Review requests | PullRequest ↔ Person |
-| `MERGED_BY` | PR merge action | PullRequest ↔ Person |
-| `INCLUDES` | PR commits | PullRequest ↔ Commit |
-| `TARGETS` | PR base branch | PullRequest ↔ Branch |
-| `FROM` | PR head branch | PullRequest ↔ Branch |
 | `MAPS_TO` | Identity mapping | IdentityMapping ↔ Person |
 | `RELATES_TO` | Related issues | Issue ↔ Issue (inherently symmetric) |
 
@@ -75,6 +66,24 @@ These relationships maintain different names because they represent clear hierar
 | `MANAGES` (Person→Team) | `MANAGED_BY` (Team→Person) | Team management |
 | `BLOCKS` | `BLOCKED_BY` | Issue blocking |
 | `DEPENDS_ON` | `DEPENDENCY_OF` | Issue dependencies |
+| `IN_SPRINT` | `CONTAINS` | Sprint containment |
+| `MODIFIES` | `MODIFIED_BY` | File modifications |
+| `REFERENCES` | `REFERENCED_BY` | Issue references |
+| `INCLUDES` | `INCLUDED_IN` | PR commits |
+| `TARGETS` | `TARGETED_BY` | PR base branch |
+| `CREATED_BY` | `CREATED` | PR creation |
+| `REVIEWED_BY` | `REVIEWED` | PR reviews |
+| `REQUESTED_REVIEWER` | `REVIEW_REQUESTED_BY` | Review requests |
+| `MERGED_BY` | `MERGED` | PR merge action |
+
+### Category 3: Unidirectional Relationships
+
+These relationships exist in only one direction:
+
+| Relationship Name | From → To | Description |
+|------------------|-----------|-------------|
+| `LEADS` | Person → Project | Project leadership |
+| `FROM` | PullRequest → Branch | PR head branch (source) |
 
 ## Complete Relationship List by Layer
 
@@ -84,7 +93,8 @@ These relationships maintain different names because they represent clear hierar
 - `MANAGES` / `MANAGED_BY` - Person ↔ Team (different names for hierarchy)
 - `MAPS_TO` - IdentityMapping ↔ Person (same name both ways)
 
-### Layer 2: Initiatives
+### Layer 2: Initiatives & Projects
+- `LEADS` - Person → Project (unidirectional)
 - `PART_OF` / `CONTAINS` - Initiative ↔ Project (different names for hierarchy)
 - `ASSIGNED_TO` - Initiative ↔ Person (same name both ways)
 - `REPORTED_BY` - Initiative ↔ Person (same name both ways)
@@ -98,10 +108,11 @@ These relationships maintain different names because they represent clear hierar
 - `PART_OF` / `CONTAINS` - Issue ↔ Epic (different names for hierarchy)
 - `ASSIGNED_TO` - Issue ↔ Person (same name both ways)
 - `REPORTED_BY` - Issue ↔ Person (same name both ways)
-- `IN_SPRINT` / `CONTAINS` - Issue ↔ Sprint (different names for hierarchy)
+- `IN_SPRINT` / `CONTAINS` - Issue ↔ Sprint (different names for directionality)
 - `BLOCKS` / `BLOCKED_BY` - Issue ↔ Issue (different names for directionality)
 - `DEPENDS_ON` / `DEPENDENCY_OF` - Issue ↔ Issue (different names for directionality)
 - `RELATES_TO` - Issue ↔ Issue (same name both ways, symmetric)
+- `TEAM` - Issue ↔ Team (same name both ways)
 
 ### Layer 5: Repositories
 - `COLLABORATOR` - Person/Team ↔ Repository (same name both ways)
@@ -112,24 +123,25 @@ These relationships maintain different names because they represent clear hierar
 ### Layer 7: Commits & Files
 - `PART_OF` / `CONTAINS` - Commit ↔ Branch (different names for hierarchy)
 - `AUTHORED_BY` - Commit ↔ Person (same name both ways)
-- `MODIFIES` - Commit ↔ File (same name both ways)
-- `REFERENCES` - Commit ↔ Issue (same name both ways)
+- `MODIFIES` / `MODIFIED_BY` - Commit ↔ File (different names for directionality)
+- `REFERENCES` / `REFERENCED_BY` - Commit ↔ Issue (different names for directionality)
 
 ### Layer 8: Pull Requests
-- `INCLUDES` - PullRequest ↔ Commit (same name both ways)
-- `TARGETS` - PullRequest ↔ Branch (same name both ways)
-- `FROM` - PullRequest ↔ Branch (same name both ways)
-- `CREATED_BY` - PullRequest ↔ Person (same name both ways)
-- `REVIEWED_BY` - PullRequest ↔ Person (same name both ways)
-- `REQUESTED_REVIEWER` - PullRequest ↔ Person (same name both ways)
-- `MERGED_BY` - PullRequest ↔ Person (same name both ways)
+- `INCLUDES` / `INCLUDED_IN` - PullRequest ↔ Commit (different names for directionality)
+- `TARGETS` / `TARGETED_BY` - PullRequest ↔ Branch (different names for directionality - base branch)
+- `FROM` - PullRequest → Branch (unidirectional - head branch)
+- `CREATED_BY` / `CREATED` - PullRequest ↔ Person (different names for directionality)
+- `REVIEWED_BY` / `REVIEWED` - PullRequest ↔ Person (different names for directionality)
+- `REQUESTED_REVIEWER` / `REVIEW_REQUESTED_BY` - PullRequest ↔ Person (different names for directionality)
+- `MERGED_BY` / `MERGED` - PullRequest ↔ Person (different names for directionality)
 
 ## Total Relationships Summary
 
-- **Same-name bidirectional**: 18 relationship types (created in both directions)
-- **Different-name directional**: 6 relationship pairs (12 types total)
-- **Total unique relationship names**: 24
-- **Total relationship instances**: ~54 (18×2 + 12 for same-name + 6×2 for different-name pairs)
+- **Same-name bidirectional**: 9 relationship types (created in both directions)
+- **Different-name bidirectional**: 13 relationship pairs (26 unique names total)
+- **Unidirectional**: 2 relationship types (created in one direction only)
+- **Total unique relationship names**: 37 (9 + 26 + 2)
+- **Total relationship instances created**: ~76 (9×2 for same-name + 13×2 for different-name pairs + 2 unidirectional)
 
 ## Query Examples
 
@@ -206,27 +218,46 @@ MATCH (e:Epic {key: "PLAT-100"})-[:PART_OF]->(initiative:Initiative)
 RETURN initiative
 ```
 
+### Example 5: Unidirectional Relationships
+
+**Natural language**: "Who leads the Platform project?"
+
+```cypher
+// LEADS is unidirectional - only Person -> Project
+MATCH (person:Person)-[:LEADS]->(project:Project {key: "PLAT"})
+RETURN person
+```
+
+**Natural language**: "What is the source branch for this PR?"
+
+```cypher
+// FROM is unidirectional - only PullRequest -> Branch (head)
+MATCH (pr:PullRequest {number: 42})-[:FROM]->(branch:Branch)
+RETURN branch
+```
+
 ## AI Query Generation Benefits
 
 When using Large Language Models (LLMs) to convert natural language to Cypher:
 
-1. **Reduced vocabulary** - The model only needs to learn 24 relationship names instead of 60
-2. **No directional reasoning** - For symmetric relationships, direction doesn't matter
-3. **Higher accuracy** - Fewer names means fewer mistakes in relationship selection
+1. **Reduced vocabulary** - The model only needs to learn 37 relationship names instead of 70+
+2. **Semantic clarity** - Same-name bidirectional relationships (9 types) work in either direction
+3. **Higher accuracy** - Strategic use of shared names reduces mistakes in relationship selection
 4. **Simpler prompts** - Documentation and examples are more concise
-5. **Better generalization** - Same relationship name works for queries in either direction
+5. **Better generalization** - For symmetric concepts, direction doesn't matter
 
 ### Comparison: Traditional vs Same-Name Approach
 
-**Traditional Bidirectional (60 names)**:
-- AI must learn: `ASSIGNED_TO`, `HAS_ASSIGNEE`, `AUTHORED_BY`, `AUTHORED`, `REVIEWED_BY`, `REVIEWED`, etc.
+**Traditional Unidirectional Approach (70+ names)**:
+- AI must learn: `ASSIGNED_TO`, `HAS_ASSIGNEE`, `AUTHORED_BY`, `HAS_AUTHOR`, `REVIEWED_BY`, `HAS_REVIEWER`, etc.
 - AI must decide: "Does user want ASSIGNED_TO or HAS_ASSIGNEE?"
-- Risk: Using wrong direction requires fallback query logic
+- Risk: Using wrong direction requires fallback query logic or query fails
 
-**Same-Name Bidirectional (24 names)**:
-- AI must learn: `ASSIGNED_TO`, `AUTHORED_BY`, `REVIEWED_BY` (one name per concept)
-- AI doesn't care about direction: "Just use ASSIGNED_TO"
-- Risk: Minimal - relationship works in both directions
+**Our Bidirectional Approach (36 names)**:
+- AI must learn: Fewer total names due to strategic use of same-name bidirectional relationships
+- For symmetric relationships: AI uses same name, direction doesn't matter
+- For hierarchical/directional: AI uses semantic names (PART_OF vs CONTAINS, BLOCKS vs BLOCKED_BY)
+- Risk: Minimal - most common queries work naturally in either direction
 
 ## Implementation Notes
 
@@ -239,11 +270,15 @@ When using Large Language Models (LLMs) to convert natural language to Cypher:
 
 When adding new relationship types:
 
-1. **Determine if bidirectional**: Does the relationship make sense in both directions in human language?
-2. **Choose reverse name**: Select a natural reverse relationship name
-3. **Update load script**: Create both forward and reverse relationships
-4. **Document here**: Add the pair to this document
-5. **Update tests**: Ensure validation queries work with both directions
+1. **Determine relationship category**: 
+   - Same-name bidirectional (symmetric concepts like ASSIGNED_TO)
+   - Different-name bidirectional (directional but traversable both ways like PART_OF/CONTAINS)
+   - Unidirectional (one-way only like LEADS or FROM)
+2. **Choose names carefully**: For bidirectional, select natural names for each direction
+3. **Update BIDIRECTIONAL_RELATIONSHIPS dict**: Add to `db/models.py` if bidirectional
+4. **Update load scripts**: Create relationships according to category
+5. **Document here**: Add to the appropriate category in this document
+6. **Update tests**: Ensure validation queries work as expected
 
 ## Performance Considerations
 

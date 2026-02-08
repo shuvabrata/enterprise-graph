@@ -7,6 +7,7 @@ from modules.github.new_user_handler import new_user_handler
 from modules.github.process_github_user import get_users_needing_refresh
 from modules.github.retry_with_backoff import retry_with_backoff
 from common.config_validator import get_repo_branch_patterns, get_repo_extraction_sources
+from common.person_cache import PersonCache
 
 import os
 from datetime import datetime, timedelta, timezone
@@ -242,6 +243,10 @@ def process_repo_(repo, session, repo_config: Optional[Dict[str, Any]] = None):
     except Exception as e:
         logger.info(f"    Warning: Could not fetch branches - {str(e)}")
 
+    # Create PersonCache for batch processing (shared across commits and PRs)
+    # This significantly improves performance by avoiding repeated Person lookups
+    person_cache = PersonCache()
+
     # Step 5: Process commits (only for default branch, incremental sync)
     if default_branch_id:
         try:
@@ -285,6 +290,7 @@ def process_repo_(repo, session, repo_config: Optional[Dict[str, Any]] = None):
                     default_branch_id, 
                     repo.owner.login, 
                     repo.default_branch,
+                    person_cache,
                     branch_patterns=branch_patterns,
                     extraction_sources=extraction_sources
                 ):
@@ -342,19 +348,32 @@ def process_repo_(repo, session, repo_config: Optional[Dict[str, Any]] = None):
 
         prs_processed = 0
         prs_failed = 0
+        
+        # Reuse PersonCache from commit processing (cross-module cache sharing)
 
         for pr in prs_to_process:
-            if new_pull_request_handler(session, repo, pr, repo_id, repo.owner.login):
+            if new_pull_request_handler(session, repo, pr, repo_id, repo.owner.login, person_cache):
                 prs_processed += 1
             else:
                 prs_failed += 1
-
+        
         logger.info(f"    ✓ Processed {prs_processed} pull requests")
         if prs_failed > 0:
             logger.info(f"    ✗ Failed/Skipped: {prs_failed} pull requests")
 
     except Exception as e:
         logger.info(f"    Warning: Could not fetch pull requests - {str(e)}")
+    
+    # Flush PersonCache after processing both commits and PRs
+    # This batches all IdentityMapping writes for maximum efficiency
+    try:
+        person_cache.flush_identity_mappings(session)
+        
+        # Log cache statistics (combined for commits + PRs)
+        stats = person_cache.get_stats()
+        logger.info(f"    📊 PersonCache stats (commits + PRs): {stats['cache_hits']} hits, {stats['cache_misses']} misses, hit rate: {stats['hit_rate']}")
+    except Exception as e:
+        logger.info(f"    Warning: Could not flush PersonCache - {str(e)}")
     
     # Step 7: Update last_synced_at timestamp after successful processing
     try:

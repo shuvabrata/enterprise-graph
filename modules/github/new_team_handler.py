@@ -80,48 +80,83 @@ def new_team_handler(session, team, repo_id, repo_created_at, processed_users_ca
             member_count = members.totalCount
             logger.info(f"    Found {member_count} team members... in team {team_name}")
             
-            # Optimization: Filter members to only those needing refresh
+            # Optimization: Filter members to only those needing identity refresh
+            # Note: We still create MEMBER_OF relationships for all members
             refresh_days = int(os.getenv('IDENTITY_REFRESH_DAYS', '7'))
             member_list = list(members)
-            members_to_process, skip_count = get_users_needing_refresh(
+            members_needing_refresh, skip_count = get_users_needing_refresh(
                 session, member_list, refresh_days
             )
             
             if skip_count > 0:
-                logger.info(f"    Skipping {skip_count} members (updated within last {refresh_days} days)")
+                logger.info(f"    Skipping identity refresh for {skip_count} members (updated within last {refresh_days} days)")
             
-            if not members_to_process:
-                logger.info(f"    All team members are up-to-date")
-            else:
-                logger.info(f"    Processing {len(members_to_process)} team members...")
+            if members_needing_refresh:
+                logger.info(f"    Refreshing identity data for {len(members_needing_refresh)} members...")
+            
+            members_processed = 0
+            members_failed = 0
+            relationships_created = 0
+            
+            # Process all members for relationship creation
+            for member in member_list:
+                github_login = member.login
                 
-                members_processed = 0
-                members_failed = 0
+                # Check if this member needs identity refresh
+                needs_refresh = member in members_needing_refresh
                 
-                for member in members_to_process:
+                # Check cache first to avoid duplicate processing in same session
+                if processed_users_cache is not None and github_login in processed_users_cache:
+                    person_id = processed_users_cache[github_login]
+                    logger.debug(f"      Using cached person: {person_id} for {github_login}")
+                elif needs_refresh:
                     # Process GitHub user: create/update Person and IdentityMapping
                     person_id = process_github_user(session, member, processed_users_cache)
-                    
                     if person_id:
-                        # Create MEMBER_OF relationship from Person to Team
-                        logger.debug(f"      Creating MEMBER_OF relationship: {person_id} -> {team_id}")
-                        member_relationship = Relationship(
-                            type="MEMBER_OF",
-                            from_id=person_id,
-                            to_id=team_id,
-                            from_type="Person",
-                            to_type="Team"
-                        )
-                        
-                        logger.debug(f"      Merging MEMBER_OF relationship")
-                        merge_relationship(session, member_relationship)
                         members_processed += 1
                     else:
                         members_failed += 1
+                        continue
+                else:
+                    # User was recently refreshed - get existing person_id from IdentityMapping
+                    query = """
+                    MATCH (i:IdentityMapping {provider: 'GitHub', username: $username})-[:MAPS_TO]->(p:Person)
+                    RETURN p.id as person_id
+                    """
+                    result = session.run(query, username=github_login).single()
+                    if result and result['person_id']:
+                        person_id = result['person_id']
+                        logger.debug(f"      Found existing person: {person_id} for {github_login}")
+                    else:
+                        # Fallback: process the user if identity not found
+                        logger.debug(f"      Identity not found for {github_login}, processing...")
+                        person_id = process_github_user(session, member, processed_users_cache)
+                        if person_id:
+                            members_processed += 1
+                        else:
+                            members_failed += 1
+                            continue
                 
-                logger.info(f"    ✓ Processed {members_processed} team members")
-                if members_failed > 0:
-                    logger.info(f"    ✗ Failed: {members_failed} team members")
+                # Always create MEMBER_OF relationship (regardless of refresh status)
+                if person_id:
+                    logger.debug(f"      Creating MEMBER_OF relationship: {person_id} -> {team_id}")
+                    member_relationship = Relationship(
+                        type="MEMBER_OF",
+                        from_id=person_id,
+                        to_id=team_id,
+                        from_type="Person",
+                        to_type="Team"
+                    )
+                    
+                    logger.debug(f"      Merging MEMBER_OF relationship")
+                    merge_relationship(session, member_relationship)
+                    relationships_created += 1
+            
+            logger.info(f"    ✓ Created {relationships_created} MEMBER_OF relationships")
+            if members_processed > 0:
+                logger.info(f"    ✓ Refreshed identity data for {members_processed} members")
+            if members_failed > 0:
+                logger.info(f"    ✗ Failed: {members_failed} members")
                     
         except Exception as e:
             # Team members might not be accessible due to permissions or API limits

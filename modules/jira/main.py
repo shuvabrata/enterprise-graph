@@ -19,6 +19,7 @@ from modules.jira.new_initiative_handler import new_initiative_handler
 from modules.jira.new_epic_handler import new_epic_handler
 from modules.jira.new_sprint_handler import new_sprint_handler
 from modules.jira.new_issue_handler import new_issue_handler
+from common.person_cache import PersonCache
 from common.logger import logger
 
 
@@ -390,6 +391,10 @@ def main():
             # Extract base URL from config for constructing browse URLs
             jira_base_url = config['account'][0]['url'].rstrip('/')
             
+            # Create PersonCache for all user processing (significant performance improvement)
+            # Single cache used across initiatives, epics, and issues for maximum cache hit rate
+            person_cache = PersonCache()
+            
             # Fetch and process projects
             logger.info("\n" + "=" * 80)
             logger.info("PROCESSING PROJECTS")
@@ -426,6 +431,7 @@ def main():
                             session, 
                             initiative_data, 
                             project_id_map,
+                            person_cache,
                             jira_connection=jira,
                             jira_base_url=jira_base_url,
                             initiative_id_map=initiative_id_map,
@@ -479,6 +485,7 @@ def main():
                             session,
                             epic_data,
                             initiative_id_map,
+                            person_cache,
                             jira_base_url=jira_base_url,
                             processed_epics=processed_epics
                         )
@@ -566,6 +573,7 @@ def main():
                             issue_data,
                             epic_id_map,
                             sprint_id_map,
+                            person_cache,
                             jira_connection=jira,
                             jira_base_url=jira_base_url
                         )
@@ -580,6 +588,17 @@ def main():
                         logger.error(f"  ✗ Error processing issue: {str(e)}")
                         logger.exception(e)
                         issues_failed += 1
+                
+                # Flush PersonCache after processing all entities (initiatives, epics, issues)
+                # This batches all IdentityMapping writes for maximum efficiency
+                try:
+                    person_cache.flush_identity_mappings(session)
+                    
+                    # Log cache statistics
+                    stats = person_cache.get_stats()
+                    logger.info(f"\n  📊 PersonCache stats (all entities): {stats['cache_hits']} hits, {stats['cache_misses']} misses, hit rate: {stats['hit_rate']}")
+                except Exception as e:
+                    logger.info(f"  Warning: Could not flush PersonCache - {str(e)}")
             
             if issues_processed > 0:
                 logger.info(f"\n  ✓ Processed {issues_processed} issue(s):")
