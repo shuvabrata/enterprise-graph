@@ -76,16 +76,13 @@ class PersonCache:
         email = email if email else None
         
         # Try cache lookup first
-        cache_key = None
         if email:
-            cache_key = ('email', email)
             if email in self._email_cache:
                 self.cache_hits += 1
                 person_id = self._email_cache[email]
                 logger.debug(f"    ⚡ Cache hit for email: {email} -> {person_id}")
                 return person_id, False
         elif provider and external_id:
-            cache_key = ('provider', provider, external_id)
             if (provider, external_id) in self._provider_cache:
                 self.cache_hits += 1
                 person_id = self._provider_cache[(provider, external_id)]
