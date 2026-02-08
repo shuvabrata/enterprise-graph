@@ -62,14 +62,15 @@ def discover_all_relationships(session: Session) -> Dict[str, List[str]]:
         
     Returns:
         Dictionary mapping relationship type to list of property names
+        (empty list if relationship has no properties)
     """
     rel_types = discover_relationship_types(session)
     
     relationship_metadata = {}
     for rel_type in rel_types:
         properties = discover_relationship_properties(session, rel_type)
-        if properties:  # Only include relationships that have properties
-            relationship_metadata[rel_type] = properties
+        # Include ALL relationships, even those without properties
+        relationship_metadata[rel_type] = properties
     
     return relationship_metadata
 

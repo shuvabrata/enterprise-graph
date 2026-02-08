@@ -36,6 +36,7 @@ def generate_console_report(report: ValidationReport) -> None:
     print(f"{Colors.BOLD}SUMMARY{Colors.RESET}")
     print(f"  Entity Types: {summary['total_entity_types']}")
     print(f"  Relationship Types: {summary['total_relationship_types']}")
+    print(f"  Relationship Existence Checks: {summary.get('total_relationship_existence_checks', 0)}")
     print(f"  Total Properties: {summary['total_properties_validated']}")
     print(f"  {Colors.GREEN}✓ Full Population (100%): {summary['full_population']}{Colors.RESET}")
     print(f"  {Colors.YELLOW}⚠ Partial Population (1-99%): {summary['partial_population']}{Colors.RESET}")
@@ -44,7 +45,27 @@ def generate_console_report(report: ValidationReport) -> None:
         print(f"  {Colors.RED}{Colors.BOLD}❌ FAILURES (Required properties at 0%): {summary['failures']}{Colors.RESET}")
     else:
         print(f"  {Colors.GREEN}✓ No failures{Colors.RESET}")
+    
+    # Relationship coverage summary
+    if 'relationship_coverage' in summary:
+        cov = summary['relationship_coverage']
+        print(f"\n{Colors.BOLD}RELATIONSHIP COVERAGE{Colors.RESET}")
+        print(f"  Expected: {cov['expected']}")
+        print(f"  Discovered: {cov['discovered']}")
+        print(f"  Coverage: {Colors.GREEN if cov['coverage_percentage'] >= 95 else Colors.YELLOW}{cov['coverage_percentage']:.1f}%{Colors.RESET}")
+        if cov['missing'] > 0:
+            print(f"  {Colors.RED}Missing: {cov['missing']}{Colors.RESET}")
+        if cov['unexpected'] > 0:
+            print(f"  {Colors.YELLOW}Unexpected: {cov['unexpected']}{Colors.RESET}")
     print()
+    
+    # Relationship Coverage Details
+    if report.relationship_coverage:
+        _print_relationship_coverage(report.relationship_coverage)
+    
+    # Relationship Existence
+    if report.relationship_existence:
+        _print_relationship_existence(report.relationship_existence)
     
     # Entity results
     if report.entity_results:
@@ -101,6 +122,100 @@ def _print_entity_table(entity_type: str, results: List[PropertyValidationResult
     
     print()
 
+def _print_relationship_coverage(coverage) -> None:
+    """Print relationship coverage section."""
+    print(f"{Colors.BOLD}{'='*100}")
+    print(f"RELATIONSHIP COVERAGE DETAILS")
+    print(f"{'='*100}{Colors.RESET}\n")
+    
+    print(f"{Colors.BOLD}Expected: {coverage.expected_count} | Discovered: {coverage.discovered_count} | Coverage: {(coverage.discovered_count/coverage.expected_count*100):.1f}%{Colors.RESET}\n")
+    
+    if coverage.missing_relationships:
+        print(f"{Colors.RED}{Colors.BOLD}MISSING RELATIONSHIPS ({len(coverage.missing_relationships)}){Colors.RESET}")
+        print(f"{Colors.RED}These relationships are expected but not found in the database:{Colors.RESET}")
+        for rel in coverage.missing_relationships:
+            print(f"  ✗ {rel}")
+        print()
+    
+    if coverage.unexpected_relationships:
+        print(f"{Colors.YELLOW}{Colors.BOLD}UNEXPECTED RELATIONSHIPS ({len(coverage.unexpected_relationships)}){Colors.RESET}")
+        print(f"{Colors.YELLOW}These relationships are in the database but not defined in db/models.py:{Colors.RESET}")
+        for rel in coverage.unexpected_relationships:
+            print(f"  ? {rel}")
+        print()
+    
+    if coverage.bidirectional_mismatches:
+        print(f"{Colors.RED}{Colors.BOLD}BIDIRECTIONAL MISMATCHES ({len(coverage.bidirectional_mismatches)}){Colors.RESET}")
+        print(f"{Colors.RED}These bidirectional relationships are missing their reverse:{Colors.RESET}")
+        for rel in coverage.bidirectional_mismatches:
+            print(f"  ⚠ {rel}")
+        print()
+    
+    if not coverage.missing_relationships and not coverage.unexpected_relationships and not coverage.bidirectional_mismatches:
+        print(f"{Colors.GREEN}✓ All expected relationships are present and consistent{Colors.RESET}\n")
+
+
+def _print_relationship_existence(existence_dict) -> None:
+    """Print relationship existence section."""
+    print(f"{Colors.BOLD}{'='*100}")
+    print(f"RELATIONSHIP EXISTENCE & CONSISTENCY")
+    print(f"{'='*100}{Colors.RESET}\n")
+    
+    # Group by expected vs unexpected
+    expected = {k: v for k, v in existence_dict.items() if v.is_expected}
+    unexpected = {k: v for k, v in existence_dict.items() if not v.is_expected}
+    
+    # Expected relationships
+    if expected:
+        print(f"{Colors.BOLD}EXPECTED RELATIONSHIPS ({len(expected)}){Colors.RESET}")
+        print(f"{'-'*100}")
+        header = f"{'Relationship':<25} {'Count':<10} {'Props':<8} {'Bidirectional':<15} {'Reverse':<25} {'Rev Count':<10} {'Diff':<10}"
+        print(header)
+        print(f"{'-'*100}")
+        
+        for rel_type in sorted(expected.keys()):
+            result = expected[rel_type]
+            
+            # Format bidirectional
+            if result.is_same_name_bidirectional:
+                bidir_str = f"{Colors.GREEN}Same name{Colors.RESET}"
+            elif result.is_bidirectional:
+                bidir_str = f"{Colors.BLUE}Yes{Colors.RESET}"
+            else:
+                bidir_str = "No"
+            
+            # Format reverse info
+            reverse_str = result.reverse_rel_type or "-"
+            rev_count_str = str(result.reverse_count) if result.reverse_count is not None else "-"
+            
+            # Format discrepancy
+            if result.count_discrepancy is not None:
+                if result.count_discrepancy == 0:
+                    diff_str = f"{Colors.GREEN}0{Colors.RESET}"
+                elif result.count_discrepancy < 10:
+                    diff_str = f"{Colors.YELLOW}{result.count_discrepancy}{Colors.RESET}"
+                else:
+                    diff_str = f"{Colors.RED}{result.count_discrepancy}{Colors.RESET}"
+            else:
+                diff_str = "-"
+            
+            # Format props
+            props_str = f"{Colors.GREEN}Yes{Colors.RESET}" if result.has_properties else "No"
+            
+            row = f"{rel_type:<25} {result.total_count:<10} {props_str:<15} {bidir_str:<22} {reverse_str:<25} {rev_count_str:<10} {diff_str:<17}"
+            print(row)
+        print()
+    
+    # Unexpected relationships
+    if unexpected:
+        print(f"{Colors.YELLOW}{Colors.BOLD}UNEXPECTED RELATIONSHIPS ({len(unexpected)}){Colors.RESET}")
+        print(f"{Colors.YELLOW}These are not defined in BIDIRECTIONAL_RELATIONSHIPS:{Colors.RESET}")
+        print(f"{'-'*100}")
+        for rel_type in sorted(unexpected.keys()):
+            result = unexpected[rel_type]
+            props_str = "with properties" if result.has_properties else "no properties"
+            print(f"  ? {rel_type:<30} Count: {result.total_count:<10} ({props_str})")
+        print()
 
 def _print_relationship_table(rel_type: str, results: List[PropertyValidationResult]) -> None:
     """Print a table for relationship property validation results."""
@@ -306,8 +421,12 @@ def generate_html_report(report: ValidationReport, output_path: Path) -> None:
                 <div class="value">{summary['total_entity_types']}</div>
             </div>
             <div class="summary-item">
-                <strong>Relationship Types</strong>
+                <strong>Relationship Types (with properties)</strong>
                 <div class="value">{summary['total_relationship_types']}</div>
+            </div>
+            <div class="summary-item">
+                <strong>Relationship Existence Checks</strong>
+                <div class="value">{summary.get('total_relationship_existence_checks', 0)}</div>
             </div>
             <div class="summary-item">
                 <strong>Total Properties</strong>
@@ -341,8 +460,18 @@ def generate_html_report(report: ValidationReport, output_path: Path) -> None:
         results = report.entity_results[entity_type]
         html_content += _generate_entity_table_html(entity_type, results)
     
+    # Add relationship existence table
+    if report.relationship_existence:
+        html_content += "<h2>Relationship Existence (All 32 Relationships)</h2>\n"
+        html_content += _generate_relationship_existence_html(report.relationship_existence)
+    
+    # Add relationship coverage
+    if report.relationship_coverage:
+        html_content += "<h2>Relationship Coverage</h2>\n"
+        html_content += _generate_relationship_coverage_html(report.relationship_coverage)
+    
     # Add relationship tables
-    html_content += "<h2>Relationship Properties</h2>\n"
+    html_content += "<h2>Relationship Properties (5 with properties)</h2>\n"
     for rel_type in sorted(report.relationship_results.keys()):
         results = report.relationship_results[rel_type]
         html_content += _generate_relationship_table_html(rel_type, results)
@@ -438,4 +567,98 @@ def _generate_relationship_table_html(rel_type: str, results: List[PropertyValid
         html += '</tr>\n'
     
     html += '</tbody>\n</table>\n</div>\n'
+    return html
+
+
+def _generate_relationship_existence_html(relationship_existence: dict) -> str:
+    """Generate HTML table for relationship existence with counts and bidirectional checking."""
+    html = '<div class="entity-section">\n'
+    html += '<table>\n<thead>\n<tr>\n'
+    html += '<th>Relationship</th><th>Count</th><th>Has Properties</th><th>Expected</th>'
+    html += '<th>Bidirectional</th><th>Reverse Rel</th><th>Reverse Count</th><th>Discrepancy</th>\n'
+    html += '</tr>\n</thead>\n<tbody>\n'
+    
+    # Sort by relationship name
+    for rel_type in sorted(relationship_existence.keys()):
+        result = relationship_existence[rel_type]
+        
+        # Color code based on expected/unexpected
+        row_class = '' if result.is_expected else 'style="background-color: #fff3cd;"'
+        
+        has_props = '✓' if result.has_properties else '—'
+        is_expected = '✓' if result.is_expected else '✗ UNEXPECTED'
+        is_bidir = '✓' if result.is_bidirectional else '—'
+        
+        reverse_rel = result.reverse_rel_type or '—'
+        reverse_count = result.reverse_count
+        if reverse_count is not None:
+            reverse_count = str(reverse_count)
+        else:
+            reverse_count = '—'
+        
+        discrepancy = result.count_discrepancy
+        if discrepancy is not None:
+            if discrepancy == 0:
+                discrepancy = '✓ Perfect'
+            else:
+                discrepancy = f'⚠️ {discrepancy}'
+        else:
+            discrepancy = '—'
+        
+        html += f'<tr {row_class}>\n'
+        html += f'<td><strong>{result.rel_type}</strong></td>\n'
+        html += f'<td>{result.total_count}</td>\n'
+        html += f'<td>{has_props}</td>\n'
+        html += f'<td>{is_expected}</td>\n'
+        html += f'<td>{is_bidir}</td>\n'
+        html += f'<td>{reverse_rel}</td>\n'
+        html += f'<td>{reverse_count}</td>\n'
+        html += f'<td>{discrepancy}</td>\n'
+        html += '</tr>\n'
+    
+    html += '</tbody>\n</table>\n</div>\n'
+    return html
+
+
+def _generate_relationship_coverage_html(coverage: 'RelationshipCoverageResult') -> str:
+    """Generate HTML for relationship coverage summary."""
+    html = '<div class="entity-section">\n'
+    
+    # Calculate coverage percentage
+    coverage_pct = (coverage.discovered_count / coverage.expected_count * 100) if coverage.expected_count > 0 else 0.0
+    
+    html += f'<p><strong>Expected:</strong> {coverage.expected_count} | '
+    html += f'<strong>Discovered:</strong> {coverage.discovered_count} | '
+    html += f'<strong>Coverage:</strong> {coverage_pct:.1f}%</p>\n'
+    
+    if coverage.missing_relationships:
+        html += '<div style="background-color: #ffebee; padding: 15px; border-radius: 5px; margin: 10px 0;">\n'
+        html += f'<h3 style="color: #c62828; margin-top: 0;">Missing Relationships ({len(coverage.missing_relationships)})</h3>\n'
+        html += '<ul>\n'
+        for rel in coverage.missing_relationships:
+            html += f'<li><code>{rel}</code></li>\n'
+        html += '</ul>\n</div>\n'
+    
+    if coverage.unexpected_relationships:
+        html += '<div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 10px 0;">\n'
+        html += f'<h3 style="color: #856404; margin-top: 0;">Unexpected Relationships ({len(coverage.unexpected_relationships)})</h3>\n'
+        html += '<ul>\n'
+        for rel in coverage.unexpected_relationships:
+            html += f'<li><code>{rel}</code></li>\n'
+        html += '</ul>\n</div>\n'
+    
+    if coverage.bidirectional_mismatches:
+        html += '<div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 10px 0;">\n'
+        html += f'<h3 style="color: #856404; margin-top: 0;">Bidirectional Mismatches ({len(coverage.bidirectional_mismatches)})</h3>\n'
+        html += '<ul>\n'
+        for mismatch in coverage.bidirectional_mismatches:
+            html += f'<li>{mismatch}</li>\n'
+        html += '</ul>\n</div>\n'
+    
+    if not coverage.missing_relationships and not coverage.unexpected_relationships and not coverage.bidirectional_mismatches:
+        html += '<div style="background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 10px 0;">\n'
+        html += '<p style="color: #2e7d32; margin: 0;"><strong>✓ All expected relationships present</strong></p>\n'
+        html += '</div>\n'
+    
+    html += '</div>\n'
     return html

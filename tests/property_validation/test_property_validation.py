@@ -165,6 +165,93 @@ def test_partial_population_warning(validation_report):
         print(f"\n✓ All required properties are 100% populated")
 
 
+def test_all_expected_relationships_exist(validation_report):
+    """
+    Verify that all expected relationships from BIDIRECTIONAL_RELATIONSHIPS exist in database.
+    """
+    if not validation_report.relationship_coverage:
+        pytest.skip("Relationship coverage validation not available")
+    
+    coverage = validation_report.relationship_coverage
+    
+    if coverage.missing_relationships:
+        failure_msg = f"\n\n{len(coverage.missing_relationships)} expected relationships are MISSING from the database:\n"
+        for rel in coverage.missing_relationships:
+            failure_msg += f"  ✗ {rel}\n"
+        pytest.fail(failure_msg)
+    
+    print(f"\n✓ All {coverage.expected_count} expected relationships exist in database")
+
+
+def test_no_unexpected_relationships(validation_report):
+    """
+    Verify that there are no unexpected relationship types in the database.
+    
+    This test warns about relationships not defined in BIDIRECTIONAL_RELATIONSHIPS.
+    """
+    if not validation_report.relationship_coverage:
+        pytest.skip("Relationship coverage validation not available")
+    
+    coverage = validation_report.relationship_coverage
+    
+    if coverage.unexpected_relationships:
+        print(f"\n⚠️  {len(coverage.unexpected_relationships)} unexpected relationships found:")
+        for rel in coverage.unexpected_relationships:
+            print(f"  ? {rel}")
+        print("\nThese should be added to BIDIRECTIONAL_RELATIONSHIPS in db/models.py")
+    else:
+        print(f"\n✓ No unexpected relationships")
+
+
+def test_bidirectional_consistency(validation_report):
+    """
+    Verify bidirectional relationships have consistent counts in both directions.
+    """
+    if not validation_report.relationship_existence:
+        pytest.skip("Relationship existence validation not available")
+    
+    inconsistencies = []
+    
+    for rel_type, result in validation_report.relationship_existence.items():
+        if result.is_bidirectional and not result.is_same_name_bidirectional:
+            if result.count_discrepancy and result.count_discrepancy > 10:
+                inconsistencies.append(
+                    f"{rel_type} ↔ {result.reverse_rel_type}: "
+                    f"{result.total_count} vs {result.reverse_count} "
+                    f"(difference: {result.count_discrepancy})"
+                )
+    
+    if inconsistencies:
+        print(f"\n⚠️  {len(inconsistencies)} bidirectional relationships have significant count discrepancies:")
+        for inc in inconsistencies[:10]:
+            print(f"  {inc}")
+        if len(inconsistencies) > 10:
+            print(f"  ... and {len(inconsistencies) - 10} more")
+    else:
+        print(f"\n✓ All bidirectional relationships are consistent")
+
+
+def test_relationship_coverage_summary(validation_report):
+    """
+    Display comprehensive relationship coverage summary.
+    """
+    if not validation_report.relationship_coverage:
+        pytest.skip("Relationship coverage validation not available")
+    
+    coverage = validation_report.relationship_coverage
+    
+    print(f"\n{'='*80}")
+    print(f"RELATIONSHIP COVERAGE SUMMARY")
+    print(f"{'='*80}")
+    print(f"Expected relationships: {coverage.expected_count}")
+    print(f"Discovered relationships: {coverage.discovered_count}")
+    print(f"Coverage: {(coverage.discovered_count/coverage.expected_count*100):.1f}%")
+    print(f"Missing: {len(coverage.missing_relationships)}")
+    print(f"Unexpected: {len(coverage.unexpected_relationships)}")
+    print(f"Bidirectional mismatches: {len(coverage.bidirectional_mismatches)}")
+    print(f"{'='*80}")
+
+
 if __name__ == "__main__":
     # Allow running directly for quick testing
     pytest.main([__file__, "-v", "-s"])
