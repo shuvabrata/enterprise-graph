@@ -46,7 +46,7 @@ fail-under=10
 #from-stdin=
 
 # Files or directories to be skipped. They should be base names, not paths.
-ignore=CVS,.git,.venv,__pycache__,.pytest_cache,alembic
+ignore=CVS,.git,.venv,__pycache__,.pytest_cache,alembic,tests,simulation
 
 # Add files or directories matching the regular expressions patterns to the
 # ignore-list. The regex matches against paths and can be in Posix or Windows
@@ -57,7 +57,7 @@ ignore-paths=
 # Files or directories matching the regular expression patterns are skipped.
 # The regex matches against base names, not paths. The default value ignores
 # Emacs file locks
-ignore-patterns=^\.#, ^test_, _unittest\.py$, _intttest\.py$
+ignore-patterns=^\.#
 
 # List of module names for which member attributes should not be checked
 # (useful for modules/projects where namespaces are manipulated during runtime

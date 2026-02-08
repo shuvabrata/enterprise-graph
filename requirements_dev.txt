@@ -3,4 +3,5 @@ pytest-asyncio
 pytest-html>=3.2.0
 httpx
 pylint
+pylint-json2html
 pyyaml>=6.0
