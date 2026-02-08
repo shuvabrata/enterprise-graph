@@ -189,7 +189,6 @@ def generate_teams() -> List[Dict[str, Any]]:
         team = {
             "id": f"team_{team_config['name'].lower().replace(' ', '_')}",
             "name": team_config['name'],
-            "focus_area": team_config['focus'],
             "target_size": team_config['size'],
             "created_at": "2024-01-01",
             "url": f"https://github.com/orgs/company/teams/{team_slug}"

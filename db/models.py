@@ -52,7 +52,6 @@ class Team:
     """Team node in the organizational graph."""
     id: str
     name: str
-    focus_area: str
     target_size: int
     created_at: str  # ISO format string (YYYY-MM-DD)
     url: Optional[str] = None
@@ -67,7 +66,6 @@ class Team:
         print(f"TEAM: {self.name}")
         print(f"{'='*60}")
         print(f"  ID:          {self.id}")
-        print(f"  Focus Area:  {self.focus_area}")
         print(f"  Target Size: {self.target_size}")
         print(f"  Created At:  {self.created_at}")
         if self.url:
@@ -940,7 +938,6 @@ def merge_team(session: Session, team: Team, relationships: Optional[List[Relati
     # Build SET clause dynamically based on available properties
     set_clauses = [
         "t.name = $name",
-        "t.focus_area = $focus_area",
         "t.target_size = $target_size",
         "t.source = 'github'"  # Mark as enriched by GitHub (overwrites 'jira_reference' if it was a stub)
     ]

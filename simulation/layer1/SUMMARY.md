@@ -107,10 +107,7 @@ WHERE NOT (m)-[:REPORTS_TO]->()
 RETURN path
 LIMIT 10
 
-// Team focus areas
-MATCH (t:Team)
-RETURN t.name, t.focus_area
-ORDER BY t.name
+
 ```
 
 ## 💡 Implementation Notes

@@ -7,7 +7,7 @@ Translate natural language questions into Cypher queries for a graph database mo
 ### Nodes
 **People & Teams**
 - Person: `name`, `email`, `title`, `role`, `seniority`, `is_manager`
-- Team: `name`, `focus_area`, `target_size`
+- Team: `name`, `target_size`
 - IdentityMapping: `provider`, `username`, `email`
 
 **Work Items**

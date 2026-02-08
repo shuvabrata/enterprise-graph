@@ -6,10 +6,10 @@ import pytest
 
 
 def test_team_distribution(query_executor, expectations, track_result):
-    """View team sizes and focus areas."""
+    """View team sizes."""
     query = """
     MATCH (t:Team)<-[:MEMBER_OF]-(p:Person)
-    RETURN t.name as team, t.focus_area, count(p) as team_size
+    RETURN t.name as team, count(p) as team_size
     ORDER BY team_size DESC
     """
     

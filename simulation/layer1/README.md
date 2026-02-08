@@ -34,7 +34,6 @@ class Person:
 class Team:
     id: str
     name: str
-    focus_area: str
     target_size: int
     created_at: str  # ISO format
 
@@ -333,7 +332,6 @@ After loading, verify:
 {
   "id": "team_platform_team",
   "name": "Platform Team",
-  "focus_area": "Infrastructure, DevOps, Security",
   "target_size": 12,
   "created_at": "2024-01-01"
 }

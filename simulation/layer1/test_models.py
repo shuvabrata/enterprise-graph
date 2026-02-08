@@ -39,7 +39,7 @@ def test_team_creation():
     team = Team(
         id="team_test",
         name="Test Team",
-        focus_area="Testing",
+
         target_size=10,
         created_at="2024-01-01"
     )

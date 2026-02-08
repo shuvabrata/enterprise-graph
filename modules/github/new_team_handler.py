@@ -43,7 +43,6 @@ def new_team_handler(session, team, repo_id, repo_created_at, processed_users_ca
         team_node = Team(
             id=team_id,
             name=team_name,
-            focus_area="",  # GitHub API doesn't provide this
             target_size=0,   # GitHub API doesn't provide this
             created_at=repo_created_at,  # Use repo creation as proxy
             url=team_url

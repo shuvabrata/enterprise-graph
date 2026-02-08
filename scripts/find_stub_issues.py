@@ -70,11 +70,10 @@ def find_enriched_teams(session):
     """Find Team nodes that were stubs but have been enriched by GitHub."""
     query = """
     MATCH (t:Team)
-    WHERE t.source = 'github' AND t.focus_area IS NOT NULL
+    WHERE t.source = 'github'
     OPTIONAL MATCH (t)<-[:TEAM]-(e:Epic)
     OPTIONAL MATCH (t)<-[:MEMBER_OF]-(p:Person)
     RETURN t.name as team_name,
-           t.focus_area as focus_area,
            count(DISTINCT e) as epic_references,
            count(DISTINCT p) as members
     ORDER BY epic_references DESC
@@ -228,15 +227,14 @@ def main():
             print("\nNo enriched teams found yet. Run: python modules/github/main.py")
         else:
             print(f"\nShowing top {len(enriched_teams)} enriched teams:\n")
-            print(f"{'Team Name':<25} {'Focus Area':<20} {'Epics':<8} {'Members':<8}")
-            print("-" * 80)
+            print(f"{'Team Name':<30} {'Epics':<8} {'Members':<8}")
+            print("-" * 60)
             
             for record in enriched_teams:
-                team_name = (record['team_name'] or 'N/A')[:24]
-                focus = (record['focus_area'] or 'N/A')[:19]
+                team_name = (record['team_name'] or 'N/A')[:29]
                 epics = record['epic_references']
                 members = record['members']
-                print(f"{team_name:<25} {focus:<20} {epics:<8} {members:<8}")
+                print(f"{team_name:<30} {epics:<8} {members:<8}")
         
         print("\n" + "=" * 80)
         print("\n✓ Diagnostic complete")

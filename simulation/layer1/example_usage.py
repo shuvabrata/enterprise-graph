@@ -62,7 +62,6 @@ def example_2_merge_person_with_team():
             team = Team(
                 id="team_engineering",
                 name="Engineering Team",
-                focus_area="Product Development",
                 target_size=10,
                 created_at="2024-01-01"
             )
@@ -127,7 +126,6 @@ def example_3_add_relationship_later():
             team = Team(
                 id="team_platform",
                 name="Platform Team",
-                focus_area="Infrastructure",
                 target_size=12,
                 created_at="2023-01-01"
             )
