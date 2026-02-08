@@ -19,130 +19,141 @@ from modules.github.utils import get_github_client
 from common.config_validator import validate_config
 
 from common.logger import logger
+from typing import Dict, List, Tuple, Union, Any
 
-def load_config():
+from typing import cast
+
+def load_config() -> Dict[str, Any]:
     """Load repository configuration from .config.json"""
     config_path = Path(__file__).parent / ".config.json"
     with open(config_path, 'r', encoding='utf-8') as f:
-        return json.load(f)
+        return cast(Dict[str, Any], json.load(f))
 
-
-def parse_repo_url(url):
+def parse_repo_url(url: str) -> Tuple[str, str]:
     """
     Extract owner and repo name from GitHub URL.
-    
+
     Example: https://github.com/owner/repo -> (owner, repo)
     Example: https://github.com/owner/* -> (owner, *)
+    
+    Args:
+        url (str): The GitHub repository URL.
+
+    Returns:
+        Tuple[str, str]: A tuple containing the owner and repository name.
     """
     parts = url.rstrip('/').split('/')
     return parts[-2], parts[-1]
 
-
-def is_wildcard_url(url):
+def is_wildcard_url(url: str) -> bool:
     """
     Check if the URL is a wildcard pattern (e.g., https://github.com/owner/*)
+
+    Args:
+        url (str): The GitHub repository URL.
+
+    Returns:
+        bool: True if the URL is a wildcard pattern, False otherwise.
     """
     return url.rstrip('/').endswith('/*') or url.rstrip('/').endswith('%2F*')
 
-
-def main():
+def main() -> None:
     """Main execution function"""
     logger.info("GitHub Repository Information Fetcher")
     logger.info("=" * 50)
-    
+
     # Validate configuration before processing
     config_path = Path(__file__).parent / ".config.json"
     if not validate_config(str(config_path), config_type="github"):
         logger.error("Configuration validation failed. Please fix errors and try again.")
         return
-    
+
     # Initialize Neo4j connection
-    neo4j_uri = os.getenv('NEO4J_URI', 'bolt://localhost:7687')
-    neo4j_user = os.getenv('NEO4J_USERNAME', 'neo4j')
-    neo4j_password = os.getenv('NEO4J_PASSWORD', 'password')
-    
+    neo4j_uri: str = os.getenv('NEO4J_URI', 'bolt://localhost:7687')
+    neo4j_user: str = os.getenv('NEO4J_USERNAME', 'neo4j')
+    neo4j_password: str = os.getenv('NEO4J_PASSWORD', 'password')
+
     logger.info(f"\nConnecting to Neo4j at {neo4j_uri}...")
     driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password))
-    
+
     try:
         # Verify connection
         driver.verify_connectivity()
         logger.info("✓ Neo4j connection established\n")
-        
+
         # Create constraints for layers 1 (Person, Team, IdentityMapping), 5 (Repository), 6 (Branch), 7 (Commit, File), and 8 (PullRequest)
         logger.info("Creating database constraints...")
         with driver.session() as session:
             create_constraints(session, layers=[1, 5, 6, 7, 8])
         logger.info("✓ Constraints created\n")
-        
+
         # Load configuration
-        config = load_config()
+        config: Dict[str, Any] = load_config()
         logger.info(f"Loaded {len(config['repos'])} repositories from config\n")
-        
+
         # Counters for tracking
-        repos_processed = 0
-        repos_failed = 0
-        
+        repos_processed: int = 0
+        repos_failed: int = 0
+
         # Create a session for the entire operation
         with driver.session() as session:
             # Process each repository
             for idx, repo_config in enumerate(config['repos'], 1):
-                repo_url = repo_config['url']
+                repo_url: str = repo_config['url']
                 logger.info(f"\n[{idx}] Processing: {repo_url}")
                 logger.info("-" * 50)
-                
+
                 try:
                     # Get GitHub client
                     client = get_github_client(repo_config)
-                    
+
                     # Check if this is a wildcard URL (e.g., https://github.com/owner/*)
                     if is_wildcard_url(repo_url):
                         # Extract owner and enumerate all repos
                         owner, _ = parse_repo_url(repo_url)
                         logger.info(f"Wildcard pattern detected. Fetching all repositories for: {owner}")
-                        
-                        repos = get_all_repos_for_owner(client, owner)
-                        
+
+                        repos: List[Any] = get_all_repos_for_owner(client, owner)
+
                         for repo in repos:
                             try:
                                 # Process repository (creates nodes and relationships)
                                 logger.info(f"\n  ↳ {repo.name}")
                                 process_repo(repo, session, repo_config)
                                 repos_processed += 1
-                                
+
                             except Exception as e:
                                 logger.info(f"    ✗ Error processing {repo.name}: {str(e)}")
                                 logger.exception(e)
                                 repos_failed += 1
                                 continue
-                                
+
                     else:
                         # Single repository
                         # Parse URL and get repository
                         owner, repo_name = parse_repo_url(repo_url)
                         repo = client.get_repo(f"{owner}/{repo_name}")
-                        
+
                         # Process repository (creates nodes and relationships)
                         process_repo(repo, session, repo_config)
                         repos_processed += 1
-                    
+
                 except Exception as e:
                     logger.info(f"✗ Error: {str(e)}")
                     logger.exception(e)
                     repos_failed += 1
                     continue
-        
+
         logger.info("\n" + "=" * 50)
         logger.info("\nSummary:")
         logger.info(f"  ✓ Successfully processed: {repos_processed}")
         logger.info(f"  ✗ Failed: {repos_failed}")
         logger.info(f"  Total: {repos_processed + repos_failed}")
-        
+
     finally:
         # Close Neo4j connection
         driver.close()
         logger.info("\n✓ Neo4j connection closed")
-
 
 if __name__ == "__main__":
     main()

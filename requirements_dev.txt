@@ -5,3 +5,4 @@ httpx
 pylint
 pylint-json2html
 pyyaml>=6.0
+mypy
