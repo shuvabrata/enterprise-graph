@@ -2,9 +2,10 @@
 Neo4j Models and Utilities for Project Graph
 Provides dataclasses for all layers and utility functions for merging into Neo4j.
 """
+from __future__ import annotations
 
 from dataclasses import dataclass, asdict, field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from neo4j import Session
 
 
@@ -16,19 +17,17 @@ from neo4j import Session
 class Person:
     """Person node in the organizational graph."""
     id: str
-    name: str
-    email: Optional[str]  # None for users without email (allows multiple NULLs with UNIQUE constraint)
-    title: str
-    role: str
-    seniority: str
-    hire_date: str  # ISO format string (YYYY-MM-DD)
-    is_manager: bool
+    name: Optional[str] = None
+    email: Optional[str] = None
+    title: Optional[str] = None
+    role: Optional[str] = None
+    seniority: Optional[str] = None
+    is_manager: Optional[bool] = None
+    hire_date: Optional[str] = None
     url: Optional[str] = None
-    
+
     def to_neo4j_properties(self) -> Dict[str, Any]:
-        """Convert to Neo4j properties with proper type conversion."""
-        props = asdict(self)
-        return props
+        return asdict(self)
     
     def print_cli(self) -> None:
         """Print the Person object in an easy-to-read CLI format."""
@@ -51,13 +50,13 @@ class Person:
 class Team:
     """Team node in the organizational graph."""
     id: str
-    name: str
-    target_size: int
-    created_at: str  # ISO format string (YYYY-MM-DD)
+    name: Optional[str] = None
+    target_size: Optional[int] = None
+    source: Optional[str] = None
+    created_at: Optional[str] = None
     url: Optional[str] = None
-    
+
     def to_neo4j_properties(self) -> Dict[str, Any]:
-        """Convert to Neo4j properties with proper type conversion."""
         return asdict(self)
     
     def print_cli(self) -> None:
@@ -106,11 +105,10 @@ class IdentityMapping:
     id: str
     provider: str
     username: str
-    email: str
-    last_updated_at: Optional[str] = None  # ISO format datetime string - tracks when identity was last refreshed
-    
+    email: Optional[str] = None
+    last_updated_at: Optional[str] = None
+
     def to_neo4j_properties(self) -> Dict[str, Any]:
-        """Convert to Neo4j properties."""
         return asdict(self)
     
     def print_cli(self) -> None:
@@ -140,7 +138,6 @@ class Project:
     url: Optional[str] = None  # URL to view the project in Jira
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
-        """Convert to Neo4j properties."""
         props = asdict(self)
         # Remove None values for cleaner storage
         return {k: v for k, v in props.items() if v is not None}
@@ -440,7 +437,7 @@ class Repository:
     url: str
     language: str
     is_private: bool
-    topics: list     # List of topic strings
+    topics: List[str]      # List of topic strings
     created_at: str  # ISO format string (YYYY-MM-DD)
     last_synced_at: Optional[str] = None  # ISO format datetime string - tracks last successful sync
     
@@ -699,7 +696,7 @@ class PullRequest:
     review_comments: int
     head_branch_name: str
     base_branch_name: str
-    labels: list  # List of label strings
+    labels: List[str]   # List of label strings
     mergeable_state: str
     url: Optional[str] = None  # GitHub URL to view PR in browser
     
@@ -854,22 +851,16 @@ def create_constraints(session: Session, layers: Optional[List[int]] = None) -> 
     }
     
     # Determine which constraints to create
+    constraints: List[str] = []
     if layers is None:
-        constraints = []
         for layer_constraints in all_constraints.values():
             constraints.extend(layer_constraints)
     else:
-        constraints = []
         for layer in layers:
-            if layer in all_constraints:
-                constraints.extend(all_constraints[layer])
-    
+            constraints.extend(all_constraints.get(layer, []))
+
     for constraint in constraints:
-        try:
-            session.run(constraint)
-        except Exception as e:
-            if "already exists" not in str(e).lower():
-                raise
+        session.run(constraint)
 
 
 # ============================================================================

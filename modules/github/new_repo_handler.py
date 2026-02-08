@@ -1,20 +1,23 @@
+from typing import Optional, Tuple
+from neo4j import Session
+from github.Repository import Repository as GitHubRepository
 from db.models import Repository, merge_repository
 
 from common.logger import logger
 
-def new_repo_handler(session, repo):
+def new_repo_handler(session: Session, repo: GitHubRepository) -> Tuple[Optional[str], Optional[str]]:
     """Handle a repository by creating Repository node in Neo4j.
 
     Args:
-        session: Neo4j session
-        repo: GitHub repository object
+        session (Session): Neo4j session
+        repo (GitHubRepository): GitHub repository object
 
     Returns:
-        tuple: (repo_id, repo_created_at) or (None, None) if failed
+        Tuple[Optional[str], Optional[str]]: (repo_id, repo_created_at) or (None, None) if failed
     """
     try:
         logger.info(f"    Processing repository: {repo.name}")
-        
+
         # Extract repository information
         repo_id = f"repo_{repo.name.replace('-', '_')}"
         repo_created_at = repo.created_at.strftime("%Y-%m-%d") if repo.created_at else None
@@ -26,7 +29,7 @@ def new_repo_handler(session, repo):
         topics = repo.get_topics()
         logger.debug(f"      Extracted topics: {topics}")
         logger.debug(f"      Description: '{repo.description or 'No description'}'")
-        
+
         repository = Repository(
             id=repo_id,
             name=repo.name,
@@ -42,7 +45,7 @@ def new_repo_handler(session, repo):
         logger.debug(f"      Merging Repository node: {repo_id}")
         merge_repository(session, repository)
         repository.print_cli()
-        
+
         logger.info(f"    ✓ Successfully merged repository node: {repo.name}")
         logger.debug(f"      Returning: repo_id='{repo_id}', repo_created_at='{repo_created_at}'")
         return repo_id, repo_created_at

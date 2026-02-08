@@ -6,16 +6,19 @@ from modules.github.process_pull_requests import process_pull_requests
 from modules.github.process_teams import process_teams
 from common.config_validator import get_repo_branch_patterns, get_repo_extraction_sources
 from common.person_cache import PersonCache
+from neo4j import Session
+from github.Repository import Repository
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 
 from common.logger import logger, LogContext
+from modules.github.repo_last_synced_at import update_last_synced_at
 
 
-def create_repository_node(session, repo):
+def create_repository_node(session: Session, repo: Repository) -> Tuple[Optional[str], Optional[str]]:
     return new_repo_handler(session, repo)
 
-def flush_person_cache(person_cache, session):
+def flush_person_cache(person_cache: PersonCache, session: Session) -> None:
     try:
         person_cache.flush_identity_mappings(session)
         stats = person_cache.get_stats()
@@ -23,25 +26,20 @@ def flush_person_cache(person_cache, session):
     except Exception as e:
         logger.info(f"    Warning: Could not flush PersonCache - {str(e)}")
 
-def update_last_synced_at_step(session, repo_id):
-    try:
-        update_last_synced_at(session, repo_id)
-    except Exception as e:
-        logger.info(f"    Warning: Could not update last_synced_at - {str(e)}")
 
-def process_repo(repo, session, repo_config: Optional[Dict[str, Any]] = None):
+def process_repo(repo: Repository, session: Session, repo_config: Optional[Dict[str, Any]] = None) -> None:
     with LogContext(request_id=repo.full_name):
         return process_repo_(repo, session, repo_config)
 
-def process_repo_(repo, session, repo_config: Optional[Dict[str, Any]] = None):
+def process_repo_(repo: Repository, session: Session, repo_config: Optional[Dict[str, Any]] = None) -> None:
     """Process repository: create repo node, collaborators, teams, branches, and commits in Neo4j.
     
     Args:
-        repo: GitHub repository object
-        session: Neo4j session
-        repo_config: Optional repository configuration dict with branch_patterns, extraction_sources, etc.
+        repo (Repository): GitHub repository object
+        session (Session): Neo4j session
+        repo_config (Optional[Dict[str, Any]]): Optional repository configuration dict with branch_patterns, extraction_sources, etc.
     """
-    processed_users_cache = {}
+    processed_users_cache: Dict[str, Any] = {}
     repo_config = repo_config or {}
     branch_patterns = get_repo_branch_patterns(repo_config)
     extraction_sources = get_repo_extraction_sources(repo_config)
@@ -61,4 +59,4 @@ def process_repo_(repo, session, repo_config: Optional[Dict[str, Any]] = None):
     process_commits(repo, session, repo_id, default_branch_id, branch_patterns, extraction_sources, person_cache)
     process_pull_requests(repo, session, repo_id, repo, person_cache)
     flush_person_cache(person_cache, session)
-    update_last_synced_at_step(session, repo_id)
+    update_last_synced_at(session, repo_id)
