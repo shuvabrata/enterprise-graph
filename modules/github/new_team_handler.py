@@ -1,10 +1,18 @@
 import os
 
+
+from typing import Any, Dict, Optional
 from db.models import Relationship, Team, merge_relationship, merge_team
 from modules.github.process_github_user import process_github_user, get_users_needing_refresh
 from common.logger import logger
 
-def new_team_handler(session, team, repo_id, repo_created_at, processed_users_cache=None):
+def new_team_handler(
+    session: Any,
+    team: Any,
+    repo_id: str,
+    repo_created_at: str,
+    processed_users_cache: Optional[Dict[str, Any]] = None
+) -> None:
     """Handle a new team by creating Team node and COLLABORATOR relationship to repository.
 
     Args:

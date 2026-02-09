@@ -8,17 +8,19 @@ import os
 
 from typing import Any, Optional
 
+from typing import Any, Dict
+
 def process_collaborators(
     repo: Any,
     session: Any,
     repo_id: str,
     repo_created_at: str,
-    processed_users_cache: dict
+    processed_users_cache: dict[str, Any]
 ) -> None:
     try:
         collaborators = repo.get_collaborators()
         logger.info(f"    Found {collaborators.totalCount} collaborators...")
-        collaborator_list = [collab for collab in collaborators if collab.type == 'User']
+        collaborator_list: list[Any] = [collab for collab in collaborators if collab.type == 'User']
         refresh_days = int(os.getenv('IDENTITY_REFRESH_DAYS', '7'))
         collaborators_to_process, skip_count = get_users_needing_refresh(
             session, collaborator_list, refresh_days

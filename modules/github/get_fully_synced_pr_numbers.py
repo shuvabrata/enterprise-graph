@@ -1,4 +1,10 @@
-def get_fully_synced_pr_numbers(session, repo_id):
+from typing import Set
+from neo4j import Session
+
+def get_fully_synced_pr_numbers(
+    session: Session,
+    repo_id: str
+) -> Set[int]:
     """Get list of PR numbers for closed/merged PRs already in Neo4j.
 
     Args:

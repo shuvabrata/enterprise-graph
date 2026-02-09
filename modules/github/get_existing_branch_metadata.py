@@ -1,4 +1,10 @@
-def get_existing_branch_metadata(session, repo_id):
+from typing import Any, Dict
+from neo4j import Session
+
+def get_existing_branch_metadata(
+    session: Session,
+    repo_id: str
+) -> Dict[str, Dict[str, Any]]:
     """Get metadata for existing branches to detect changes.
 
     Args:
@@ -16,7 +22,7 @@ def get_existing_branch_metadata(session, repo_id):
     """
     result = session.run(query, repo_id=repo_id)
 
-    branch_metadata = {}
+    branch_metadata: Dict[str, Dict[str, Any]] = {}
     for record in result:
         branch_metadata[record['name']] = {
             'last_commit_sha': record['last_commit_sha'],

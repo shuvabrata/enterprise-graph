@@ -11,11 +11,20 @@ Strategy: Email-as-Master-Key
 - Fall back to provider-specific IDs when email is unavailable
 """
 
+from typing import Optional, Tuple
+from neo4j import Session
 from db.models import Person, merge_person
 from common.logger import logger
 
 
-def get_or_create_person(session, email, name, provider=None, external_id=None, url=None):
+def get_or_create_person(
+    session: Session,
+    email: Optional[str],
+    name: str,
+    provider: Optional[str] = None,
+    external_id: Optional[str] = None,
+    url: Optional[str] = None
+) -> Tuple[Optional[str], bool]:
     """
     Get existing Person by email or create a new one.
     

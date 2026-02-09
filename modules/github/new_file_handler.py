@@ -1,12 +1,10 @@
+from typing import Any, Optional
 import hashlib
 from db.models import File, merge_file
-
-
 from pathlib import Path
-
 from common.logger import logger
 
-def generate_file_hash(file_path):
+def generate_file_hash(file_path: str) -> str:
     """
     Generate a hash for a file path to create unique file IDs.
     
@@ -19,7 +17,15 @@ def generate_file_hash(file_path):
     return hashlib.sha256(file_path.encode()).hexdigest()[:8]
 
 
-def new_file_handler(session, repo_name, file_path, created_at, file_size=0, repo_owner=None, branch="main"):
+def new_file_handler(
+    session: Any,
+    repo_name: str,
+    file_path: str,
+    created_at: str,
+    file_size: int = 0,
+    repo_owner: Optional[str] = None,
+    branch: str = "main"
+) -> str:
     """
     Create or update a File node in Neo4j.
 

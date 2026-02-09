@@ -20,7 +20,7 @@ def get_github_client(repo_config: Dict[str, Any]) -> Github:
     Raises:
         ValueError: If no GitHub token is found in the configuration or environment variable.
     """
-    token: str = repo_config.get('access_token')
+    token= repo_config.get('access_token')
 
     if not token:
         token = os.getenv('GITHUB_TOKEN_FOR_PUBLIC_REPOS')

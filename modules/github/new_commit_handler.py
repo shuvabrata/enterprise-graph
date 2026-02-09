@@ -8,7 +8,9 @@ from modules.github.retry_with_backoff import retry_with_backoff
 from common.person_cache import PersonCache
 from common.logger import logger
 
-def is_commit_fully_synced(session, commit_id, commit_sha):
+from typing import Any
+
+def is_commit_fully_synced(session: Any, commit_id: str, commit_sha: str) -> bool:
     """
     Check if a commit is already fully synced (has all MODIFIES relationships).
     
@@ -37,7 +39,7 @@ def is_commit_fully_synced(session, commit_id, commit_sha):
     return False
 
 
-def mark_commit_fully_synced(session, commit_id):
+def mark_commit_fully_synced(session: Any, commit_id: str) -> None:
     """
     Mark a commit as fully synced after all MODIFIES relationships are created.
     
@@ -53,7 +55,7 @@ def mark_commit_fully_synced(session, commit_id):
     session.run(query, commit_id=commit_id)
 
 
-def get_or_create_commit_author(session, commit_author, person_cache: PersonCache):
+def get_or_create_commit_author(session: Any, commit_author: Any, person_cache: PersonCache) -> str:
     """
     Get or create Person for a commit author using PersonCache.
     
@@ -140,7 +142,7 @@ def get_or_create_commit_author(session, commit_author, person_cache: PersonCach
         return fallback_id
 
 
-def extract_issue_keys(message):
+def extract_issue_keys(message: str) -> List[str]:
     """
     Extract Jira issue keys from commit message.
     
@@ -205,7 +207,7 @@ def extract_issue_keys_from_branch(branch_name: str, patterns: Optional[List[str
     return unique_keys
 
 
-def get_or_create_issue_stub(session, issue_key):
+def get_or_create_issue_stub(session: Any, issue_key: str) -> str:
     """
     Get or create a stub Issue node for a Jira issue key.
     
@@ -238,10 +240,17 @@ def get_or_create_issue_stub(session, issue_key):
     return issue_id
 
 
-def new_commit_handler(session, repo_name, commit, branch_id, repo_owner, branch_name,
-                       person_cache: PersonCache,
-                       branch_patterns: Optional[List[str]] = None,
-                       extraction_sources: Optional[List[str]] = None):
+def new_commit_handler(
+    session: Any,
+    repo_name: str,
+    commit: Any,
+    branch_id: str,
+    repo_owner: str,
+    branch_name: str,
+    person_cache: PersonCache,
+    branch_patterns: Optional[List[str]] = None,
+    extraction_sources: Optional[List[str]] = None
+) -> bool:
     """
     Handle a commit by creating Commit node and relationships.
 

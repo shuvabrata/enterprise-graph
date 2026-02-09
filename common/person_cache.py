@@ -56,7 +56,7 @@ class PersonCache:
         provider: Optional[str] = None,
         external_id: Optional[str] = None,
         url: Optional[str] = None
-    ) -> Tuple[Optional[str], bool]:
+    ) -> Tuple[str, bool]:
         """
         Get existing Person by email or create a new one.
         Uses in-memory cache to avoid repeated database queries.
@@ -102,9 +102,8 @@ class PersonCache:
             person_id = f"person_{provider}_{external_id}"
             logger.debug(f"    No email available, using provider-specific ID: {person_id}")
         else:
-            logger.error("    Cannot create person_id: both email and provider/external_id are missing")
-            return None, False
-        
+            raise ValueError("    Cannot create person_id: both email and provider/external_id are missing")
+     
         # Check if Person already exists in database
         is_new = False
         if email:

@@ -5,8 +5,16 @@ from modules.github.map_permissions_to_general import map_permissions_to_general
 import time
 
 from common.logger import logger
+from typing import Any, List, Dict, Optional
+from neo4j import Session
 
-def bulk_user_handler(session, collaborators, repo_id, repo_created_at, batch_size=50):
+def bulk_user_handler(
+    session: Session,
+    collaborators: List[Any],
+    repo_id: str,
+    repo_created_at: str,
+    batch_size: int = 50
+) -> None:
     """Handle multiple collaborators in batches for better performance.
 
     Args:
@@ -173,12 +181,17 @@ def bulk_user_handler(session, collaborators, repo_id, repo_created_at, batch_si
     logger.info(f"      - Rate: {processed_count/duration:.1f} collaborators/second")
 
 
-def _bulk_merge_nodes(session, persons, identities, relationships):
+def _bulk_merge_nodes(
+    session: Session,
+    persons: List[Person],
+    identities: List[IdentityMapping],
+    relationships: List[Relationship]
+) -> None:
     """Merge nodes and relationships in bulk using single transaction."""
     logger.debug(f"        Starting bulk merge: {len(persons)} persons, {len(identities)} identities, {len(relationships)} relationships")
     
     # Build bulk merge queries
-    person_query = """
+    person_query: str = """
     UNWIND $persons as person_data
     MERGE (p:Person {id: person_data.id})
     SET p.name = person_data.name,
@@ -190,7 +203,7 @@ def _bulk_merge_nodes(session, persons, identities, relationships):
         p.is_manager = person_data.is_manager
     """
     
-    identity_query = """
+    identity_query: str = """
     UNWIND $identities as identity_data
     MERGE (i:IdentityMapping {id: identity_data.id})
     SET i.provider = identity_data.provider,
@@ -201,7 +214,7 @@ def _bulk_merge_nodes(session, persons, identities, relationships):
                                   ELSE null END
     """
     
-    relationship_query = """
+    relationship_query: str = """
     UNWIND $relationships as rel_data
     MATCH (from_node {id: rel_data.from_id})
     MATCH (to_node {id: rel_data.to_id})
@@ -211,7 +224,7 @@ def _bulk_merge_nodes(session, persons, identities, relationships):
     """
     
     # Alternative relationship query for environments without APOC
-    simple_relationship_query = """
+    simple_relationship_query: str = """
     UNWIND $relationships as rel_data
     MATCH (from_node {id: rel_data.from_id})
     MATCH (to_node {id: rel_data.to_id})
@@ -221,13 +234,13 @@ def _bulk_merge_nodes(session, persons, identities, relationships):
     
     try:
         # Convert to Neo4j format
-        person_data = [person.to_neo4j_properties() for person in persons]
-        identity_data = [identity.to_neo4j_properties() for identity in identities]
+        person_data: List[Dict[str, Any]] = [person.to_neo4j_properties() for person in persons]
+        identity_data: List[Dict[str, Any]] = [identity.to_neo4j_properties() for identity in identities]
         
         # Convert relationships
-        rel_data = []
+        rel_data: List[Dict[str, Any]] = []
         for rel in relationships:
-            rel_dict = {
+            rel_dict: Dict[str, Any] = {
                 "from_id": rel.from_id,
                 "to_id": rel.to_id,
                 "type": rel.type,

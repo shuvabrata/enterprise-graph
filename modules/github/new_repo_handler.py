@@ -15,44 +15,39 @@ def new_repo_handler(session: Session, repo: GitHubRepository) -> Tuple[Optional
     Returns:
         Tuple[Optional[str], Optional[str]]: (repo_id, repo_created_at) or (None, None) if failed
     """
-    try:
-        logger.info(f"    Processing repository: {repo.name}")
 
-        # Extract repository information
-        repo_id = f"repo_{repo.name.replace('-', '_')}"
-        if not repo.created_at:
-            raise ValueError("Repository created_at is None")
-        repo_created_at = repo.created_at.strftime("%Y-%m-%d")
-        logger.debug(f"      Repository details: id='{repo_id}', created_at='{repo_created_at}'")
-        logger.debug(f"      Full name: '{repo.full_name}', URL: '{repo.html_url}'")
-        logger.debug(f"      Language: '{repo.language}', Private: {repo.private}")
+    logger.info(f"    Processing repository: {repo.name}")
 
-        # Create Repository node
-        topics = repo.get_topics()
-        logger.debug(f"      Extracted topics: {topics}")
-        logger.debug(f"      Description: '{repo.description or 'No description'}'")
+    # Extract repository information
+    repo_id = f"repo_{repo.name.replace('-', '_')}"
+    if not repo.created_at:
+        raise ValueError("Repository created_at is None")
+    repo_created_at = repo.created_at.strftime("%Y-%m-%d")
+    logger.debug(f"      Repository details: id='{repo_id}', created_at='{repo_created_at}'")
+    logger.debug(f"      Full name: '{repo.full_name}', URL: '{repo.html_url}'")
+    logger.debug(f"      Language: '{repo.language}', Private: {repo.private}")
 
-        repository = Repository(
-            id=repo_id,
-            name=repo.name,
-            full_name=repo.full_name,
-            url=repo.html_url,
-            language=repo.language or "",
-            is_private=repo.private,
-            topics=topics,
-            created_at=repo_created_at
-        )
+    # Create Repository node
+    topics = repo.get_topics()
+    logger.debug(f"      Extracted topics: {topics}")
+    logger.debug(f"      Description: '{repo.description or 'No description'}'")
 
-        # Merge into Neo4j
-        logger.debug(f"      Merging Repository node: {repo_id}")
-        merge_repository(session, repository)
-        repository.print_cli()
+    repository = Repository(
+        id=repo_id,
+        name=repo.name,
+        full_name=repo.full_name,
+        url=repo.html_url,
+        language=repo.language or "",
+        is_private=repo.private,
+        topics=topics,
+        created_at=repo_created_at
+    )
 
-        logger.info(f"    ✓ Successfully merged repository node: {repo.name}")
-        logger.debug(f"      Returning: repo_id='{repo_id}', repo_created_at='{repo_created_at}'")
-        return repo_id, repo_created_at
+    # Merge into Neo4j
+    logger.debug(f"      Merging Repository node: {repo_id}")
+    merge_repository(session, repository)
+    repository.print_cli()
 
-    except Exception as e:
-        logger.info(f"    ✗ Error: Failed to create Repository for {repo.name}: {str(e)}")
-        logger.exception(e)
-        return None, None
+    logger.info(f"    ✓ Successfully merged repository node: {repo.name}")
+    logger.debug(f"      Returning: repo_id='{repo_id}', repo_created_at='{repo_created_at}'")
+    return repo_id, repo_created_at

@@ -9,15 +9,15 @@ import os
 from datetime import datetime, timedelta
 
 
-from typing import Any, Sequence
+from typing import Any, List
 
 def process_commits(
     repo: Any,
     session: Any,
     repo_id: str,
     default_branch_id: str,
-    branch_patterns: Sequence[str],
-    extraction_sources: Sequence[str],
+    branch_patterns: List[str],
+    extraction_sources: List[str],
     person_cache: Any
 ) -> None:
     if default_branch_id:

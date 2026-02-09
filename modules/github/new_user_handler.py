@@ -1,9 +1,16 @@
+from typing import Any, Optional, Dict
 from db.models import Relationship, merge_relationship
 from modules.github.map_permissions_to_general import map_permissions_to_general
 from modules.github.process_github_user import process_github_user
 from common.logger import logger
 
-def new_user_handler(session, collaborator, repo_id, repo_created_at, processed_users_cache=None):
+def new_user_handler(
+    session: Any,
+    collaborator: Any,
+    repo_id: str,
+    repo_created_at: str,
+    processed_users_cache: Optional[Dict[str, Any]] = None
+) -> None:
     """Handle a new user collaborator by creating Person, IdentityMapping nodes and COLLABORATOR relationship.
 
     Args:

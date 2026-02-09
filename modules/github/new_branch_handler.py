@@ -1,5 +1,7 @@
 from db.models import Branch, Relationship, merge_branch, merge_relationship
 from common.logger import logger
+from typing import Any, Optional
+from neo4j import Session
 
 # NOTE FOR FUTURE DEVELOPERS:
 # We do NOT fetch branch creation timestamp (created_at) because:
@@ -23,7 +25,13 @@ from common.logger import logger
 # Performance improvement: 100,000x faster (from minutes to milliseconds per branch)
 
 
-def new_branch_handler(session, repo, branch, repo_id, repo_owner=None):
+def new_branch_handler(
+    session: Session,
+    repo: Any,
+    branch: Any,
+    repo_id: str,
+    repo_owner: Optional[str] = None
+) -> None:
     """Handle a branch by creating Branch node and BRANCH_OF relationship.
 
     Args:
@@ -45,7 +53,7 @@ def new_branch_handler(session, repo, branch, repo_id, repo_owner=None):
         # Get last commit info (already fetched in branch object - no API call needed)
         last_commit = branch.commit
         last_commit_sha = last_commit.sha
-        last_commit_timestamp = last_commit.commit.author.date.isoformat() if last_commit.commit.author.date else None
+        last_commit_timestamp = last_commit.commit.author.date.isoformat() 
         logger.debug(f"        Last commit: {last_commit_sha[:8]}, timestamp: {last_commit_timestamp}")
         
         # Generate GitHub URL if owner is provided

@@ -1,4 +1,10 @@
-def get_fully_synced_commit_shas(session, repo_id):
+from typing import Set
+from neo4j import Session
+
+def get_fully_synced_commit_shas(
+    session: Session,
+    repo_id: str
+) -> Set[str]:
     """Get list of commit SHAs that are already fully processed in Neo4j.
 
     Args:

@@ -1,5 +1,6 @@
 from typing import List, Any
-from github import Github, Organization, Repository, NamedUser
+from github import Github, Organization, NamedUser
+from github.Repository import Repository
 from common.logger import logger
 
 def get_all_repos_for_owner(client: Github, owner: str) -> List[Repository]:
@@ -16,13 +17,13 @@ def get_all_repos_for_owner(client: Github, owner: str) -> List[Repository]:
     repos: List[Repository] = []
     try:
         # Try as organization first
-        org: Organization = client.get_organization(owner)
+        org = client.get_organization(owner)
         repos = list(org.get_repos())
         logger.info(f"Found {len(repos)} repositories for organization: {owner}")
     except Exception:
         # If not an organization, try as user
         try:
-            user: NamedUser = client.get_user(owner)
+            user = client.get_user(owner)
             repos = list(user.get_repos())
             logger.info(f"Found {len(repos)} repositories for user: {owner}")
         except Exception as e:

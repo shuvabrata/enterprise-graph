@@ -1,8 +1,11 @@
-import time
 
+import time
+from typing import Callable, TypeVar, Any
 from common.logger import logger
 
-def retry_with_backoff(func, max_retries=5, initial_delay=1):
+T = TypeVar('T')
+
+def retry_with_backoff(func: Callable[[], T], max_retries: int = 5, initial_delay: int = 1) -> T:
     """
     Retry a function with exponential backoff for rate limiting.
 

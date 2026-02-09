@@ -1,4 +1,6 @@
-def map_permissions_to_general(permissions):
+from typing import Dict
+
+def map_permissions_to_general(permissions: Dict[str, bool]) -> str:
     """
     Map GitHub permissions to general READ or WRITE access.
 

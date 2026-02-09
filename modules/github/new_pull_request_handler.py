@@ -1,11 +1,17 @@
 from datetime import datetime, timezone
 
+from typing import Any, Optional
 from db.models import PullRequest, Branch, Relationship, merge_pull_request, merge_branch, merge_relationship
 from modules.github.retry_with_backoff import retry_with_backoff
 from common.person_cache import PersonCache
 from common.logger import logger
 
-def create_or_get_external_branch(session, repo_name, head_ref, pr_number):
+def create_or_get_external_branch(
+    session: Any,
+    repo_name: str,
+    head_ref: Any,
+    pr_number: int
+) -> Optional[str]:
     """
     Create or get a Branch node for external (fork) branches.
     
@@ -39,7 +45,7 @@ def create_or_get_external_branch(session, repo_name, head_ref, pr_number):
                 is_external=True,
                 last_commit_sha="unknown",
                 last_commit_timestamp=datetime.now().isoformat(),
-                created_at=datetime.now().isoformat()
+                url=None  # No URL available for deleted forks
             )
         else:
             # Fork still exists
@@ -49,6 +55,10 @@ def create_or_get_external_branch(session, repo_name, head_ref, pr_number):
             
             branch_id = f"branch_external_{fork_owner}_{fork_repo.name}_{branch_name.replace('/', '_').replace('-', '_')}"
             logger.debug(f"        External branch ID: {branch_id}")
+            
+            # Construct GitHub URL for the external branch
+            github_url = f"https://github.com/{fork_owner}/{fork_repo.name}/tree/{branch_name}"
+            logger.debug(f"        Generated fork branch URL: {github_url}")
             
             # Try to get the branch details from the fork
             try:
@@ -73,7 +83,7 @@ def create_or_get_external_branch(session, repo_name, head_ref, pr_number):
                 is_external=True,
                 last_commit_sha=last_commit_sha,
                 last_commit_timestamp=last_commit_timestamp,
-                created_at=datetime.now().isoformat()
+                url=github_url
             )
         
         # Merge the external branch into Neo4j
@@ -86,7 +96,11 @@ def create_or_get_external_branch(session, repo_name, head_ref, pr_number):
         return None
 
 
-def get_or_create_pr_author(session, pr_user, person_cache: PersonCache):
+def get_or_create_pr_author(
+    session: Any,
+    pr_user: Any,
+    person_cache: PersonCache
+) -> str:
     """
     Get or create Person for PR author using PersonCache.
     
@@ -137,7 +151,14 @@ def get_or_create_pr_author(session, pr_user, person_cache: PersonCache):
         return "person_github_unknown"
 
 
-def new_pull_request_handler(session, repo, pr, repo_id, repo_owner, person_cache: PersonCache):
+def new_pull_request_handler(
+    session: Any,
+    repo: Any,
+    pr: Any,
+    repo_id: str,
+    repo_owner: str,
+    person_cache: PersonCache
+) -> bool:
     """
     Handle a pull request by creating PullRequest node and all relationships.
     

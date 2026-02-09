@@ -15,9 +15,6 @@ from common.logger import logger, LogContext
 from modules.github.repo_last_synced_at import update_last_synced_at
 
 
-def create_repository_node(session: Session, repo: Repository) -> Tuple[Optional[str], str]:
-    return new_repo_handler(session, repo)
-
 def flush_person_cache(person_cache: PersonCache, session: Session) -> None:
     try:
         person_cache.flush_identity_mappings(session)
@@ -47,7 +44,7 @@ def process_repo_(repo: Repository, session: Session, repo_config: Optional[Dict
     if "branch" in extraction_sources:
         logger.debug(f"    Using branch patterns: {branch_patterns}")
 
-    repo_id, repo_created_at = create_repository_node(session, repo)
+    repo_id, repo_created_at = new_repo_handler(session, repo)
     if repo_id is None:
         logger.info(f"    Warning: Skipping collaborators/teams due to repo creation failure")
         raise Exception("Repository node creation failed")

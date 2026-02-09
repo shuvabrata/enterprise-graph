@@ -12,7 +12,13 @@ from common.identity_resolver import get_or_create_person
 from common.logger import logger
 
 
-def get_users_needing_refresh(session, github_users, refresh_days=7):
+from typing import Any, Dict, List, Optional, Tuple
+
+def get_users_needing_refresh(
+    session: Any,
+    github_users: List[Any],
+    refresh_days: int = 7
+) -> Tuple[List[Any], int]:
     """Filter GitHub users to only those needing refresh based on last_updated_at.
     
     Args:
@@ -50,7 +56,11 @@ def get_users_needing_refresh(session, github_users, refresh_days=7):
     return users_to_process, skip_count
 
 
-def process_github_user(session, github_user, processed_users_cache=None):
+def process_github_user(
+    session: Any,
+    github_user: Any,
+    processed_users_cache: Optional[Dict[str, str]] = None
+) -> Optional[str]:
     """Process a GitHub user: create/update Person and IdentityMapping nodes.
     
     This function handles the common identity resolution pattern used across
