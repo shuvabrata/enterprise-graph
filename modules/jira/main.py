@@ -23,7 +23,9 @@ from common.person_cache import PersonCache
 from common.logger import logger
 
 
-def load_config():
+from typing import Any, Dict, Set, List
+
+def load_config() -> Dict[str, Any]:
     """Load configuration from .config.json file."""
     # Look for config file in the current directory or go up to find it
     config_path = Path(__file__).parent / '.config.json'
@@ -38,7 +40,7 @@ def load_config():
         return json.load(f)
 
 
-def create_jira_connection(config):
+def create_jira_connection(config: Dict[str, Any]) -> Jira:
     """Create and return a Jira connection object."""
     account = config['account'][0]  # Use first account
     
@@ -58,7 +60,7 @@ def create_jira_connection(config):
     return jira
 
 
-def fetch_projects(jira, max_results_per_page=100):
+def fetch_projects(jira: Jira, max_results_per_page: int = 100) -> List[Dict[str, Any]]:
     """Fetch all projects from Jira using pagination."""
     try:
         logger.info("Fetching Jira projects...")
@@ -102,7 +104,7 @@ def fetch_projects(jira, max_results_per_page=100):
         return []
 
 
-def fetch_initiatives(jira, lookback_days=90, max_results_per_page=100):
+def fetch_initiatives(jira: Jira, lookback_days: int = 90, max_results_per_page: int = 100) -> List[Dict[str, Any]]:
     """Fetch initiatives from Jira created in the last N days using pagination."""
     try:
         # Calculate the date N days ago
@@ -150,7 +152,7 @@ def fetch_initiatives(jira, lookback_days=90, max_results_per_page=100):
         return []
 
 
-def fetch_epics(jira, lookback_days=90, max_results_per_page=100):
+def fetch_epics(jira: Jira, lookback_days: int = 90, max_results_per_page: int = 100) -> List[Dict[str, Any]]:
     """Fetch epics from Jira created in the last N days using pagination."""
     try:
         # Calculate the date N days ago
@@ -198,7 +200,7 @@ def fetch_epics(jira, lookback_days=90, max_results_per_page=100):
         return []
 
 
-def extract_sprint_ids_from_issues(issues):
+def extract_sprint_ids_from_issues(issues: List[Dict[str, Any]]) -> Set[int]:
     """Extract unique sprint IDs from issues.
     
     Args:
@@ -227,7 +229,7 @@ def extract_sprint_ids_from_issues(issues):
     return sprint_ids
 
 
-def fetch_sprints_by_ids(jira, sprint_ids):
+def fetch_sprints_by_ids(jira: Jira, sprint_ids: Set[int]) -> List[Dict[str, Any]]:
     """Fetch specific sprints by their IDs.
     
     Args:
@@ -277,7 +279,7 @@ def fetch_sprints_by_ids(jira, sprint_ids):
         return []
 
 
-def fetch_issues(jira, lookback_days=90, max_results_per_page=100):
+def fetch_issues(jira: Jira, lookback_days: int = 90, max_results_per_page: int = 100) -> List[Dict[str, Any]]:
     """Fetch all issues from Jira created in the last N days using pagination.
     
     Note: Excludes Initiative and Epic issue types as they are fetched separately.
@@ -329,7 +331,7 @@ def fetch_issues(jira, lookback_days=90, max_results_per_page=100):
         return []
 
 
-def main():
+def main() -> int:
     """Main function to run the Jira integration."""
     try:
         logger.info("=" * 80)

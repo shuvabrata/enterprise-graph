@@ -4,7 +4,13 @@ from modules.jira.new_jira_user_handler import new_jira_user_handler
 from common.logger import logger
 
 
-def new_project_handler(session, project_data, jira_base_url=None):
+from typing import Any, Optional
+
+def new_project_handler(
+    session: Any,
+    project_data: dict,
+    jira_base_url: Optional[str] = None
+) -> Optional[str]:
     """Handle a Jira project by creating Project node and relationships.
 
     Args:

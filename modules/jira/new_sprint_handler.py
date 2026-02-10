@@ -2,7 +2,13 @@ from db.models import Sprint, Relationship, merge_sprint
 from common.logger import logger
 
 
-def new_sprint_handler(session, sprint_data, jira_base_url=None):
+from typing import Any, Optional
+
+def new_sprint_handler(
+    session: Any,
+    sprint_data: dict,
+    jira_base_url: Optional[str] = None
+) -> Optional[str]:
     """Handle a Jira sprint by creating Sprint node.
 
     Args:

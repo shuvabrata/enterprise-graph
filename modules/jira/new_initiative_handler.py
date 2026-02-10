@@ -4,7 +4,18 @@ from common.person_cache import PersonCache
 from common.logger import logger
 
 
-def new_initiative_handler(session, issue_data, project_id_map, person_cache: PersonCache, jira_connection=None, jira_base_url=None, initiative_id_map=None, processed_epics=None):
+from typing import Any, Dict, Optional, Set
+
+def new_initiative_handler(
+    session: Any,
+    issue_data: dict,
+    project_id_map: Dict[str, str],
+    person_cache: PersonCache,
+    jira_connection: Any = None,
+    jira_base_url: Optional[str] = None,
+    initiative_id_map: Optional[Dict[str, str]] = None,
+    processed_epics: Optional[Set[str]] = None
+) -> Optional[str]:
     """Handle a Jira initiative by creating Initiative node and relationships.
 
     Args:

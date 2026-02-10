@@ -6,7 +6,16 @@ from common.person_cache import PersonCache
 from common.logger import logger
 
 
-def new_epic_handler(session, issue_data, initiative_id_map, person_cache: PersonCache, jira_base_url=None, processed_epics=None):
+from typing import Any, Dict, Optional, Set
+
+def new_epic_handler(
+    session: Any,
+    issue_data: dict,
+    initiative_id_map: Dict[str, str],
+    person_cache: PersonCache,
+    jira_base_url: Optional[str] = None,
+    processed_epics: Optional[Set[str]] = None
+) -> Optional[str]:
     """Handle a Jira epic by creating Epic node and relationships.
 
     Args:

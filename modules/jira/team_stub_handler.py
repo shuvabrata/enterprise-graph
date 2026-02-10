@@ -2,7 +2,9 @@
 from common.logger import logger
 
 
-def get_or_create_team_stub(session, team_name):
+from typing import Any
+
+def get_or_create_team_stub(session: Any, team_name: str) -> str:
     """
     Get or create a stub Team node for a team name.
     

@@ -4,7 +4,13 @@ from db.models import IdentityMapping, Relationship, merge_identity_mapping
 from common.person_cache import PersonCache
 from common.logger import logger
 
-def new_jira_user_handler(session, user_data, person_cache: PersonCache):
+from typing import Any, Optional
+
+def new_jira_user_handler(
+    session: Any,
+    user_data: dict,
+    person_cache: PersonCache
+) -> Optional[str]:
     """Handle a Jira user by creating Person and IdentityMapping nodes using PersonCache.
 
     Args:

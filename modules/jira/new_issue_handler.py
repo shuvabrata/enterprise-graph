@@ -6,8 +6,17 @@ from common.person_cache import PersonCache
 from common.logger import logger
 
 
-def new_issue_handler(session, issue_data, epic_id_map, sprint_id_map, person_cache: PersonCache,
-                     jira_connection=None, jira_base_url=None):
+from typing import Any, Dict, Optional
+
+def new_issue_handler(
+    session: Any,
+    issue_data: dict,
+    epic_id_map: Dict[str, str],
+    sprint_id_map: Dict[str, str],
+    person_cache: PersonCache,
+    jira_connection: Any = None,
+    jira_base_url: Optional[str] = None
+) -> Optional[str]:
     """Handle a Jira issue (all types) by creating Issue node and relationships.
 
     Args:
