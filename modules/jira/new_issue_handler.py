@@ -1,3 +1,5 @@
+from typing import Any, Dict, Optional
+
 import os
 from db.models import Issue, Relationship, merge_issue
 from modules.jira.new_jira_user_handler import new_jira_user_handler
@@ -6,15 +8,13 @@ from common.person_cache import PersonCache
 from common.logger import logger
 
 
-from typing import Any, Dict, Optional
 
 def new_issue_handler(
     session: Any,
-    issue_data: dict,
+    issue_data: Dict[str, Any],
     epic_id_map: Dict[str, str],
     sprint_id_map: Dict[str, str],
     person_cache: PersonCache,
-    jira_connection: Any = None,
     jira_base_url: Optional[str] = None
 ) -> Optional[str]:
     """Handle a Jira issue (all types) by creating Issue node and relationships.

@@ -1,14 +1,16 @@
+from typing import Any, Optional, Dict
+
+from common.person_cache import PersonCache
+from common.logger import logger
+
 from db.models import Project, Relationship, merge_project
 from modules.jira.new_jira_user_handler import new_jira_user_handler
 
-from common.logger import logger
-
-
-from typing import Any, Optional
 
 def new_project_handler(
     session: Any,
-    project_data: dict,
+    project_data: Dict[str, Any],
+    person_cache: PersonCache,
     jira_base_url: Optional[str] = None
 ) -> Optional[str]:
     """Handle a Jira project by creating Project node and relationships.
@@ -16,6 +18,7 @@ def new_project_handler(
     Args:
         session: Neo4j session
         project_data: Jira project object from API
+        person_cache: Cache for Jira user information
         jira_base_url: Base URL of Jira instance (e.g., "https://yoursite.atlassian.net")
 
     Returns:
@@ -54,7 +57,7 @@ def new_project_handler(
         lead = project_data.get('lead')
         if lead:
             logger.debug(f"    Processing project lead: {lead.get('displayName')}")
-            lead_id = new_jira_user_handler(session, lead)
+            lead_id = new_jira_user_handler(session, lead, person_cache)
         
         # Create Project node
         logger.debug(f"    Creating Project node with ID: {project_id}")

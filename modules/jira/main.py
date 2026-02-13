@@ -5,6 +5,7 @@ Jira Integration - Fetch Projects, Initiatives, Epics, Sprints, and Issues
 This program connects to Jira, fetches projects, initiatives, epics, sprints, and all issue types,
 and loads them into Neo4j with proper relationships.
 """
+from typing import Any, Dict, Set, List, cast
 
 import json
 import os
@@ -22,9 +23,6 @@ from modules.jira.new_issue_handler import new_issue_handler
 from common.person_cache import PersonCache
 from common.logger import logger
 
-
-from typing import Any, Dict, Set, List
-
 def load_config() -> Dict[str, Any]:
     """Load configuration from .config.json file."""
     # Look for config file in the current directory or go up to find it
@@ -36,8 +34,8 @@ def load_config() -> Dict[str, Any]:
     if not config_path.exists():
         raise FileNotFoundError("Could not find .config.json file")
     
-    with open(config_path, 'r') as f:
-        return json.load(f)
+    with open(config_path, 'r', encoding='utf-8') as f:
+        return cast(Dict[str, Any], json.load(f))
 
 
 def create_jira_connection(config: Dict[str, Any]) -> Jira:
@@ -52,7 +50,7 @@ def create_jira_connection(config: Dict[str, Any]) -> Jira:
     )
     
     # Validate connection
-    user = jira.myself()
+    user = jira.myself()  # type: ignore  # This will raise an exception if authentication fails
     if not user:
         raise Exception("Failed to authenticate with Jira. Please check your API credentials.")
     logger.info(f"Successfully authenticated as: {user.get('displayName', user.get('emailAddress', 'Unknown'))}")
@@ -200,7 +198,7 @@ def fetch_epics(jira: Jira, lookback_days: int = 90, max_results_per_page: int =
         return []
 
 
-def extract_sprint_ids_from_issues(issues: List[Dict[str, Any]]) -> Set[int]:
+def extract_sprint_ids_from_issues(issues: List[Dict[str, Any]]) -> Set[str]:
     """Extract unique sprint IDs from issues.
     
     Args:
@@ -229,7 +227,7 @@ def extract_sprint_ids_from_issues(issues: List[Dict[str, Any]]) -> Set[int]:
     return sprint_ids
 
 
-def fetch_sprints_by_ids(jira: Jira, sprint_ids: Set[int]) -> List[Dict[str, Any]]:
+def fetch_sprints_by_ids(jira: Jira, sprint_ids: Set[str]) -> List[Dict[str, Any]]:
     """Fetch specific sprints by their IDs.
     
     Args:
@@ -384,11 +382,11 @@ def main() -> int:
             sprints_failed = 0
             issues_processed = 0
             issues_failed = 0
-            project_id_map = {}  # Map Jira project key to Neo4j project ID
-            initiative_id_map = {}  # Map Jira issue ID to Neo4j initiative ID
-            epic_id_map = {}  # Map Jira issue ID to Neo4j epic ID
-            sprint_id_map = {}  # Map Jira sprint ID to Neo4j sprint ID
-            processed_epics = set()  # Track processed epic IDs to avoid duplicates
+            project_id_map: Dict[str, str] = {}  # Map Jira project key to Neo4j project ID
+            initiative_id_map: Dict[str, str] = {}  # Map Jira issue ID to Neo4j initiative ID
+            epic_id_map: Dict[str, str] = {}  # Map Jira issue ID to Neo4j epic ID
+            sprint_id_map: Dict[str, str] = {}  # Map Jira sprint ID to Neo4j sprint ID
+            processed_epics: Set[str] = set()  # Track processed epic IDs to avoid duplicates
             
             # Extract base URL from config for constructing browse URLs
             jira_base_url = config['account'][0]['url'].rstrip('/')
@@ -398,7 +396,7 @@ def main() -> int:
             person_cache = PersonCache()
             
             # Fetch and process projects
-            logger.info("\n" + "=" * 80)
+            logger.info("\n%s", "=" * 80)
             logger.info("PROCESSING PROJECTS")
             logger.info("=" * 80)
             
@@ -407,9 +405,9 @@ def main() -> int:
             with driver.session() as session:
                 for project_data in projects:
                     try:
-                        project_id = new_project_handler(session, project_data, jira_base_url=jira_base_url)
+                        project_id = new_project_handler(session, project_data, person_cache, jira_base_url=jira_base_url)
                         if project_id:
-                            project_key = project_data.get('key')
+                            project_key = str(project_data.get('key'))
                             project_id_map[project_key] = project_id
                             projects_processed += 1
                         else:
@@ -420,7 +418,7 @@ def main() -> int:
                         projects_failed += 1
             
             # Fetch and process initiatives
-            logger.info("\n" + "=" * 80)
+            logger.info("\n%s", "=" * 80)
             logger.info("PROCESSING INITIATIVES")
             logger.info("=" * 80)
             
@@ -558,12 +556,12 @@ def main() -> int:
                         sprints_failed += 1
             
             # Process issues (all types)
-            logger.info("\n" + "=" * 80)
+            logger.info("\n%s" + "=" * 80)
             logger.info("PROCESSING ISSUES")
             logger.info("=" * 80)
             
             # Count by type
-            issue_type_counts = {}
+            issue_type_counts: Dict[str, int] = {}
             
             logger.info(f"Processing {len(issues)} issue(s)...")
             
@@ -576,7 +574,6 @@ def main() -> int:
                             epic_id_map,
                             sprint_id_map,
                             person_cache,
-                            jira_connection=jira,
                             jira_base_url=jira_base_url
                         )
                         if issue_id:

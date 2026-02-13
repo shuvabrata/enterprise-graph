@@ -1,14 +1,12 @@
+from typing import Any, Optional, Dict
 from datetime import datetime, timezone
 
-from db.models import IdentityMapping, Relationship, merge_identity_mapping
 from common.person_cache import PersonCache
 from common.logger import logger
 
-from typing import Any, Optional
-
 def new_jira_user_handler(
     session: Any,
-    user_data: dict,
+    user_data: Dict[str, Any],
     person_cache: PersonCache
 ) -> Optional[str]:
     """Handle a Jira user by creating Person and IdentityMapping nodes using PersonCache.

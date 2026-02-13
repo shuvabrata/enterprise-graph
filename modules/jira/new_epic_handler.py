@@ -1,3 +1,4 @@
+from typing import Any, Dict, Optional, Set, Dict
 import os
 from db.models import Epic, Relationship, merge_epic
 from modules.jira.new_jira_user_handler import new_jira_user_handler
@@ -6,11 +7,10 @@ from common.person_cache import PersonCache
 from common.logger import logger
 
 
-from typing import Any, Dict, Optional, Set
 
 def new_epic_handler(
     session: Any,
-    issue_data: dict,
+    issue_data: Dict[str, Any],
     initiative_id_map: Dict[str, str],
     person_cache: PersonCache,
     jira_base_url: Optional[str] = None,
