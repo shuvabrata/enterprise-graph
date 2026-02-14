@@ -1,6 +1,6 @@
 {
     "python.analysis.extraPaths": [
-        "./app/common"
+        "./app"
     ],
     "terminal.integrated.profiles.linux": {
         "zsh": {
