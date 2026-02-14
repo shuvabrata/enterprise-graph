@@ -1,10 +1,11 @@
 from datetime import datetime, timezone
 
-from db.models import IdentityMapping, Person, Relationship, merge_person, merge_identity_mapping, merge_relationship
+from db.models import IdentityMapping, Relationship, merge_relationship
 from modules.github.map_permissions_to_general import map_permissions_to_general
 import time
 
 from common.logger import logger
+from common.person_cache import PersonCache
 from typing import Any, List, Dict, Optional
 from neo4j import Session
 
@@ -13,7 +14,8 @@ def bulk_user_handler(
     collaborators: List[Any],
     repo_id: str,
     repo_created_at: str,
-    batch_size: int = 50
+    batch_size: int = 50,
+    person_cache: Optional[PersonCache] = None
 ) -> None:
     """Handle multiple collaborators in batches for better performance.
 
@@ -23,10 +25,16 @@ def bulk_user_handler(
         repo_id: Repository ID to create COLLABORATOR relationship with
         repo_created_at: Repository creation date for relationship timestamp
         batch_size: Number of collaborators to process in each batch
+        person_cache: Optional PersonCache for identity resolution. If None, creates a new one.
     """
     total_collaborators = len(collaborators)
     logger.info(f"    Processing {total_collaborators} collaborators in batches of {batch_size}...")
     logger.debug(f"    Parameters: repo_id={repo_id}, repo_created_at={repo_created_at}, batch_size={batch_size}")
+    
+    # Use provided cache or create new one
+    if person_cache is None:
+        person_cache = PersonCache()
+        logger.debug("    Created new PersonCache for bulk_user_handler")
     
     # Track performance
     start_time = time.time()
@@ -44,7 +52,6 @@ def bulk_user_handler(
         
         try:
             # Prepare batch data
-            persons = []
             identities = []
             relationships = []
             
@@ -67,23 +74,22 @@ def bulk_user_handler(
                         logger.debug(f"          Skipping non-User collaborator: {github_login} (type: {collaborator_type})")
                         continue
                     
-                    person_id = f"person_github_{github_login}"
-                    identity_id = f"identity_github_{github_login}"
-                    logger.debug(f"          Generated IDs: person_id='{person_id}', identity_id='{identity_id}'")
-                    
-                    # Create Person node
-                    person = Person(
-                        id=person_id,
+                    # Use PersonCache for identity resolution (critical for avoiding duplicates)
+                    person_id, is_new = person_cache.get_or_create_person(
+                        session=session,
+                        email=github_email or None,  # Normalize empty string to None
                         name=github_name,
-                        email=github_email,
-                        title="",
-                        role="",
-                        seniority="",
-                        hire_date="",
-                        is_manager=False
+                        provider="github",
+                        external_id=github_login,
+                        url=f"https://github.com/{github_login}"
                     )
-                    persons.append(person)
-                    logger.debug(f"          Created Person node: {person_id}")
+                    
+                    if person_id is None:
+                        logger.warning(f"          Failed to resolve person_id for {github_login}, skipping")
+                        continue
+                    
+                    identity_id = f"identity_github_{github_login}"
+                    logger.debug(f"          Resolved person_id='{person_id}' (is_new={is_new}), identity_id='{identity_id}'")
                     
                     # Create IdentityMapping node with timestamp
                     identity = IdentityMapping(
@@ -158,9 +164,9 @@ def bulk_user_handler(
                     continue
             
             # Bulk merge into Neo4j in single transaction
-            if persons:
-                logger.debug(f"        Bulk merging batch {batch_num}: {len(persons)} persons, {len(identities)} identities, {len(relationships)} relationships")
-                _bulk_merge_nodes(session, persons, identities, relationships)
+            if identities or relationships:
+                logger.debug(f"        Bulk merging batch {batch_num}: {len(identities)} identities, {len(relationships)} relationships")
+                _bulk_merge_nodes(session, identities, relationships)
                 logger.debug(f"        Successfully merged batch {batch_num}")
             else:
                 logger.debug(f"        No valid collaborators in batch {batch_num}, skipping merge")
@@ -171,10 +177,18 @@ def bulk_user_handler(
             logger.debug(f"        Batch {batch_num} exception details", exc_info=True)
             failed_count += len(batch)
     
+    # Flush PersonCache identity mappings
+    try:
+        person_cache.flush_identity_mappings(session)
+        cache_stats = person_cache.get_stats()
+        logger.debug(f"    PersonCache stats: {cache_stats['cache_hits']} hits, {cache_stats['cache_misses']} misses, hit rate: {cache_stats['hit_rate']}")
+    except Exception as flush_ex:
+        logger.warning(f"    Failed to flush PersonCache: {str(flush_ex)}")
+    
     # Performance summary
     end_time = time.time()
     duration = end_time - start_time
-    logger.info(f"    ✓ Bulk processing completed:")
+    logger.info("    ✓ Bulk processing completed:")
     logger.info(f"      - Processed: {processed_count} collaborators")
     logger.info(f"      - Failed: {failed_count} collaborators") 
     logger.info(f"      - Duration: {duration:.2f}s")
@@ -183,26 +197,16 @@ def bulk_user_handler(
 
 def _bulk_merge_nodes(
     session: Session,
-    persons: List[Person],
     identities: List[IdentityMapping],
     relationships: List[Relationship]
 ) -> None:
-    """Merge nodes and relationships in bulk using single transaction."""
-    logger.debug(f"        Starting bulk merge: {len(persons)} persons, {len(identities)} identities, {len(relationships)} relationships")
+    """Merge IdentityMapping nodes and relationships in bulk using single transaction.
     
-    # Build bulk merge queries
-    person_query: str = """
-    UNWIND $persons as person_data
-    MERGE (p:Person {id: person_data.id})
-    SET p.name = person_data.name,
-        p.email = person_data.email,
-        p.title = person_data.title,
-        p.role = person_data.role,
-        p.seniority = person_data.seniority,
-        p.hire_date = CASE WHEN person_data.hire_date <> '' THEN date(person_data.hire_date) ELSE null END,
-        p.is_manager = person_data.is_manager
+    Note: Person nodes are created via PersonCache.get_or_create_person() which handles
+    identity resolution. This function only creates IdentityMappings and relationships.
     """
-    
+    logger.debug(f"        Starting bulk merge: {len(identities)} identities, {len(relationships)} relationships")
+    # Build bulk merge queries (Person nodes are handled by PersonCache)
     identity_query: str = """
     UNWIND $identities as identity_data
     MERGE (i:IdentityMapping {id: identity_data.id})
@@ -233,8 +237,7 @@ def _bulk_merge_nodes(
     """
     
     try:
-        # Convert to Neo4j format
-        person_data: List[Dict[str, Any]] = [person.to_neo4j_properties() for person in persons]
+        # Convert to Neo4j format (Person nodes already created by PersonCache)
         identity_data: List[Dict[str, Any]] = [identity.to_neo4j_properties() for identity in identities]
         
         # Convert relationships
@@ -249,8 +252,6 @@ def _bulk_merge_nodes(
             rel_data.append(rel_dict)
         
         # Execute bulk operations
-        logger.debug(f"          Executing person merge query for {len(person_data)} persons")
-        session.run(person_query, persons=person_data)
         logger.debug(f"          Executing identity merge query for {len(identity_data)} identities")
         session.run(identity_query, identities=identity_data)
         
