@@ -20,6 +20,44 @@ services:
       - neo4j_plugins:/plugins
     restart: unless-stopped
 
+  jira-sync:
+    build: .
+    container_name: enterprise-graph-jira-sync
+    command: python modules/jira/main.py
+    env_file:
+      - .env
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - PYTHONPATH=/app
+      - LOG_DIR=/var/log/enterprise-graph
+    volumes:
+      - ./app/modules/jira/.config.json:/app/modules/jira/.config.json:ro
+      - ./logs:/var/log/enterprise-graph
+    depends_on:
+      - neo4j
+    restart: "no"  # One-shot execution, run manually via docker compose run
+    networks:
+      - default
+
+  github-sync:
+    build: .
+    container_name: enterprise-graph-github-sync
+    command: python modules/github/main.py
+    env_file:
+      - .env
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - PYTHONPATH=/app
+      - LOG_DIR=/var/log/enterprise-graph
+    volumes:
+      - ./app/modules/github/.config.json:/app/modules/github/.config.json:ro
+      - ./logs:/var/log/enterprise-graph
+    depends_on:
+      - neo4j
+    restart: "no"  # One-shot execution, run manually via docker compose run
+    networks:
+      - default
+
 volumes:
   neo4j_data:
   neo4j_logs:

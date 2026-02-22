@@ -230,3 +230,4 @@ simulation/data/layer8_pull_requests.json
 .config*
 .python-version
 reports/*
+logs/
