@@ -75,8 +75,23 @@ def get_or_create_commit_author(session: Any, commit_author: Any, person_cache: 
         if hasattr(commit_author, 'login'):
             # Full user object
             github_login = commit_author.login
-            github_name = commit_author.name if hasattr(commit_author, 'name') and commit_author.name else github_login
-            github_email = commit_author.email if hasattr(commit_author, 'email') and commit_author.email else ""
+            
+            # Safely access name property (may trigger lazy load that can fail for bots)
+            try:
+                github_name = commit_author.name if commit_author.name else github_login
+            except Exception:
+                # Lazy load failed (common for bot accounts like "Copilot")
+                github_name = github_login
+                logger.warning(f"        Could not load name for '{github_login}', using login as name")
+            
+            # Safely access email property (may trigger lazy load that can fail for bots)
+            try:
+                github_email = commit_author.email if commit_author.email else ""
+            except Exception:
+                # Lazy load failed (common for bot accounts)
+                github_email = ""
+                logger.warning(f"        Could not load email for '{github_login}', using empty email")
+            
             # Normalize email to lowercase immediately at source
             github_email = github_email.lower() if github_email else ""
             logger.debug(f"        Full user object: login='{github_login}', name='{github_name}', email='{github_email}'")
