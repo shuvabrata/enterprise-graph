@@ -242,6 +242,39 @@ docker compose run --rm github-sync
 [INFO] ✓ Successfully processed: 15
 ```
 
+### 5.3 When to Rebuild Docker Images
+
+**Important:** Docker images are **NOT rebuilt automatically** when you run the sync commands. The image is only built:
+- The first time you run `docker compose run` (if the image doesn't exist)
+- When you explicitly request a rebuild
+
+**When do you need to rebuild?**
+- After pulling code updates from the repository
+- After modifying Python code in the `app/` or `modules/` directories
+- After updating `requirements.txt`
+
+**How to rebuild:**
+
+Option 1 - Rebuild and run in one command:
+```bash
+docker compose run --rm --build github-sync
+# or
+docker compose run --rm --build jira-sync
+```
+
+Option 2 - Build first, then run:
+```bash
+docker compose build github-sync
+docker compose run --rm github-sync
+```
+
+Option 3 - Rebuild all services:
+```bash
+docker compose build
+```
+
+**Performance tip:** The `--build` flag only rebuilds when something has changed, so it's safe to use regularly without wasting time.
+
 ---
 
 ## Step 6: Verify Your Data
