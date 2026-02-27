@@ -39,40 +39,27 @@ cd enterprise-graph
 
 You need to create two configuration files that tell the tool which projects and repositories to sync.
 
-### 2.1 Create Jira Configuration File
+### Quick Setup (Recommended)
 
-1. Navigate to the `app/modules/jira/` folder in the repository
-2. Create a new file named `.config.json` in that folder
-3. Copy and paste the following template into the file:
+Run the initialization script to automatically create config files from templates:
 
-```json
-{
-  "account": [
-    {
-      "url": "https://your-company.atlassian.net",
-      "email": "your-email@company.com",
-      "api_token": "your-jira-api-token-here"
-    }
-  ]
-}
+```bash
+./scripts/init-configs.sh
 ```
 
-4. Replace the placeholder values:
-   - `your-company.atlassian.net` - Your Jira Cloud URL
-   - `your-email@company.com` - Your Jira account email
-   - `your-jira-api-token-here` - Your Jira API token
+This will create:
+- `app/modules/github/.config.json` (from the example template)
+- `app/modules/jira/.config.json` (from the example template)
 
-**How to get a Jira API token:**
-- Go to https://id.atlassian.com/manage-profile/security/api-tokens
-- Click "Create API token"
-- Give it a name (e.g., "Enterprise Graph Sync")
-- Copy the token and paste it into your config file
+Then proceed to edit these files with your credentials (see sections 2.1 and 2.2 below).
 
-### 2.2 Create GitHub Configuration File
+### Manual Setup (Alternative)
 
-1. Navigate to the `app/modules/github/` folder in the repository
-2. Create a new file named `.config.json` in that folder
-3. Copy and paste the following template into the file:
+If you prefer to create the files manually, follow the instructions below.
+
+### 2.1 Edit GitHub Configuration
+
+Open `app/modules/github/.config.json` (created by the init script) and update with your values:
 
 ```json
 {
@@ -89,10 +76,10 @@ You need to create two configuration files that tell the tool which projects and
 }
 ```
 
-4. Replace the placeholder values:
-   - `your-org/your-repo` - Specific repository you want to sync
-   - `your-org/*` - Use asterisk (*) to sync all repositories in an organization
-   - `your-github-token-here` - Your GitHub Personal Access Token
+**Replace the placeholder values:**
+- `your-org/your-repo` - Specific repository you want to sync
+- `your-org/*` - Use asterisk (*) to sync all repositories in an organization
+- `your-github-token-here` - Your GitHub Personal Access Token
 
 **How to get a GitHub Personal Access Token:**
 - Go to https://github.com/settings/tokens
@@ -106,6 +93,33 @@ You need to create two configuration files that tell the tool which projects and
 - Specific repo: `"https://github.com/mycompany/backend"`
 - All repos in org: `"https://github.com/mycompany/*"`
 - Multiple entries: Just add more objects in the `repos` array
+
+### 2.2 Edit Jira Configuration
+
+Open `app/modules/jira/.config.json` (created by the init script) and update with your values:
+
+```json
+{
+  "account": [
+    {
+      "url": "https://your-company.atlassian.net",
+      "email": "your-email@company.com",
+      "api_token": "your-jira-api-token-here"
+    }
+  ]
+}
+```
+
+**Replace the placeholder values:**
+- `your-company.atlassian.net` - Your Jira Cloud URL
+- `your-email@company.com` - Your Jira account email
+- `your-jira-api-token-here` - Your Jira API token
+
+**How to get a Jira API token:**
+- Go to https://id.atlassian.com/manage-profile/security/api-tokens
+- Click "Create API token"
+- Give it a name (e.g., "Enterprise Graph Sync")
+- Copy the token and paste it into your config file
 
 ---
 
@@ -316,11 +330,27 @@ docker compose logs -f neo4j
 ## Troubleshooting
 
 ### "Could not find .config.json file"
-- Make sure you created the `.config.json` files in the correct folders:
+- **Solution:** Run the initialization script:
+  ```bash
+  ./scripts/init-configs.sh
+  ```
+- Alternatively, manually create the `.config.json` files in the correct folders:
   - `app/modules/jira/.config.json`
   - `app/modules/github/.config.json`
 - File names must start with a dot (.)
 - On Windows, you may need to use command prompt to create files starting with dot
+
+### "Is a directory" error for .config.json
+This happens when Docker creates a directory instead of mounting a file (because the file didn't exist when Docker started).
+
+**Solution:**
+1. Stop all containers: `docker compose down`
+2. Remove the incorrectly created directory: `sudo rm -rf app/modules/github/.config.json app/modules/jira/.config.json`
+3. Run the init script: `./scripts/init-configs.sh`
+4. Edit the config files with your credentials
+5. Try running Docker again
+
+**Prevention:** Always run `./scripts/init-configs.sh` before your first `docker compose` command.
 
 ### "Authentication failed" (Jira)
 - Double-check your Jira URL (should be `https://yourcompany.atlassian.net`)
