@@ -289,6 +289,8 @@ def fetch_issues(jira: Jira, lookback_days: int = 90, max_results_per_page: int 
         
         # Exclude Initiatives and Epics since they're fetched separately
         jql = f'created >= {cutoff_date_str} AND issuetype NOT IN (Initiative, Epic) ORDER BY created DESC'
+
+        #Todo: Find a way to store last sync date for issues and query only updates issues during incremental scan
         
         logger.info(f"Fetching issues (excluding Initiatives and Epics) created since {cutoff_date_str}...")
         logger.info(f"Executing JQL: {jql}")
