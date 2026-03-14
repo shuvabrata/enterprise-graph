@@ -103,7 +103,7 @@ def load_relationships():
     
     Relationships:
     - PART_OF: Commit → Branch (no properties)
-    - AUTHORED_BY: Commit → Person (no properties)
+    - AUTHORED_BY: Commit ↔ Person (undirected, no properties)
     - MODIFIES: Commit → File (with additions/deletions properties)
     - REFERENCES: Commit → Issue (no properties)
     """
@@ -139,7 +139,7 @@ def load_relationships():
                     properties=rel_data.get('properties', {})
                 )
                 
-                # Merge relationship (handles bidirectional automatically)
+                # Merge relationship (handles directionality automatically)
                 merge_relationship(session, relationship)
             
             # Report relationship counts
@@ -179,7 +179,7 @@ def validate_layer7():
             # 2. Commits by author (top 10)
             print("\n2. Top 10 Commit Authors:")
             result = session.run("""
-                MATCH (c:Commit)-[:AUTHORED_BY]->(p:Person)
+                MATCH (c:Commit)-[:AUTHORED_BY]-(p:Person)
                 RETURN p.name, count(c) as commits
                 ORDER BY commits DESC
                 LIMIT 10

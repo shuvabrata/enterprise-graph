@@ -62,7 +62,7 @@ class RelationshipExistenceResult:
     rel_type: str
     total_count: int
     has_properties: bool
-    is_expected: bool  # Is this relationship defined in BIDIRECTIONAL_RELATIONSHIPS?
+    is_expected: bool  # Is this relationship defined in model relationship definitions?
     is_bidirectional: bool
     is_same_name_bidirectional: bool
     reverse_rel_type: Optional[str] = None

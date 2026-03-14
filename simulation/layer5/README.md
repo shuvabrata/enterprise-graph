@@ -8,8 +8,8 @@ This layer creates repository nodes with COLLABORATOR relationships to both team
 - 8 Repository nodes (across different teams and technology stacks)
 
 **Relationships Created:**
-- `COLLABORATOR`: Team → Repository (with `permission` property: "READ" or "WRITE")
-- `COLLABORATOR`: Person → Repository (with `permission` property: "READ" or "WRITE")
+- `COLLABORATOR`: Team ↔ Repository (undirected, with `permission` property: "READ" or "WRITE")
+- `COLLABORATOR`: Person ↔ Repository (undirected, with `permission` property: "READ" or "WRITE")
 
 ## Repository Structure
 
@@ -68,21 +68,21 @@ The loader automatically runs validation queries. You can also explore in Neo4j 
 
 ```cypher
 // View all repositories with their owning teams (WRITE access)
-MATCH (t:Team)-[c:COLLABORATOR {permission: 'WRITE'}]->(r:Repository)
+MATCH (t:Team)-[c:COLLABORATOR {permission: 'WRITE'}]-(r:Repository)
 RETURN t.name, r.name, r.language
 
 // Find maintainers (people with WRITE access)
-MATCH (p:Person)-[c:COLLABORATOR {permission: 'WRITE'}]->(r:Repository)
+MATCH (p:Person)-[c:COLLABORATOR {permission: 'WRITE'}]-(r:Repository)
 RETURN r.name, collect(p.name) as maintainers
 ORDER BY r.name
 
 // Cross-team collaborations (teams with READ access)
-MATCH (t:Team)-[c:COLLABORATOR {permission: 'READ'}]->(r:Repository)
+MATCH (t:Team)-[c:COLLABORATOR {permission: 'READ'}]-(r:Repository)
 RETURN r.name, collect(t.name) as read_access_teams
 ORDER BY r.name
 
 // People working across multiple repos
-MATCH (p:Person)-[c:COLLABORATOR]->(r:Repository)
+MATCH (p:Person)-[c:COLLABORATOR]-(r:Repository)
 WITH p, c.permission as perm, collect(r.name) as repos
 WHERE size(repos) > 1
 RETURN p.name, p.title, perm, repos, size(repos) as repo_count
@@ -101,7 +101,7 @@ After loading, verify:
 
 ## Relationship Properties
 
-### Team COLLABORATOR → Repository
+### Team COLLABORATOR ↔ Repository (undirected)
 ```json
 {
   "permission": "WRITE" | "READ",
@@ -116,7 +116,7 @@ For READ access, may also include:
 }
 ```
 
-### Person COLLABORATOR → Repository
+### Person COLLABORATOR ↔ Repository (undirected)
 ```json
 {
   "permission": "WRITE" | "READ",

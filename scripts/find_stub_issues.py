@@ -56,7 +56,7 @@ def find_stub_teams(session):
     query = """
     MATCH (t:Team)
     WHERE t.source = 'jira_reference'
-    OPTIONAL MATCH (t)<-[:TEAM]-(e:Epic)
+    OPTIONAL MATCH (t)-[:TEAM]-(e:Epic)
     RETURN t.name as team_name, 
            t.id as team_id,
            t.created_at as created_at,
@@ -71,8 +71,8 @@ def find_enriched_teams(session):
     query = """
     MATCH (t:Team)
     WHERE t.source = 'github'
-    OPTIONAL MATCH (t)<-[:TEAM]-(e:Epic)
-    OPTIONAL MATCH (t)<-[:MEMBER_OF]-(p:Person)
+    OPTIONAL MATCH (t)-[:TEAM]-(e:Epic)
+    OPTIONAL MATCH (t)-[:MEMBER_OF]-(p:Person)
     RETURN t.name as team_name,
            count(DISTINCT e) as epic_references,
            count(DISTINCT p) as members

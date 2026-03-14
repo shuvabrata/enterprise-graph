@@ -167,7 +167,7 @@ def test_partial_population_warning(validation_report):
 
 def test_all_expected_relationships_exist(validation_report):
     """
-    Verify that all expected relationships from BIDIRECTIONAL_RELATIONSHIPS exist in database.
+    Verify that all expected relationships from model definitions exist in database.
     """
     if not validation_report.relationship_coverage:
         pytest.skip("Relationship coverage validation not available")
@@ -187,7 +187,7 @@ def test_no_unexpected_relationships(validation_report):
     """
     Verify that there are no unexpected relationship types in the database.
     
-    This test warns about relationships not defined in BIDIRECTIONAL_RELATIONSHIPS.
+    This test warns about relationships not defined in the model relationship definitions.
     """
     if not validation_report.relationship_coverage:
         pytest.skip("Relationship coverage validation not available")
@@ -198,14 +198,14 @@ def test_no_unexpected_relationships(validation_report):
         print(f"\n⚠️  {len(coverage.unexpected_relationships)} unexpected relationships found:")
         for rel in coverage.unexpected_relationships:
             print(f"  ? {rel}")
-        print("\nThese should be added to BIDIRECTIONAL_RELATIONSHIPS in db/models.py")
+        print("\nThese should be added to the relationship definitions in db/models.py")
     else:
         print(f"\n✓ No unexpected relationships")
 
 
 def test_bidirectional_consistency(validation_report):
     """
-    Verify bidirectional relationships have consistent counts in both directions.
+    Verify directional relationship pairs have consistent counts in both directions.
     """
     if not validation_report.relationship_existence:
         pytest.skip("Relationship existence validation not available")
@@ -222,13 +222,13 @@ def test_bidirectional_consistency(validation_report):
                 )
     
     if inconsistencies:
-        print(f"\n⚠️  {len(inconsistencies)} bidirectional relationships have significant count discrepancies:")
+        print(f"\n⚠️  {len(inconsistencies)} directional relationships have significant count discrepancies:")
         for inc in inconsistencies[:10]:
             print(f"  {inc}")
         if len(inconsistencies) > 10:
             print(f"  ... and {len(inconsistencies) - 10} more")
     else:
-        print(f"\n✓ All bidirectional relationships are consistent")
+        print(f"\n✓ All directional relationships are consistent")
 
 
 def test_relationship_coverage_summary(validation_report):

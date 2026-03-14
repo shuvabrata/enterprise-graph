@@ -11,7 +11,7 @@ def new_user_handler(
     repo_created_at: str,
     processed_users_cache: Optional[Dict[str, Any]] = None
 ) -> None:
-    """Handle a new user collaborator by creating Person, IdentityMapping nodes and COLLABORATOR relationship.
+    """Handle a new user collaborator by creating Person, IdentityMapping nodes and COLLABORATOR relationship (undirected).
 
     Args:
         session: Neo4j session
@@ -47,7 +47,7 @@ def new_user_handler(
             role = "contributor"
         logger.debug(f"      Determined role: {role}")
 
-        # Create COLLABORATOR relationship from Person to Repository
+        # Create COLLABORATOR relationship (undirected) between Person and Repository
         collab_properties = {
             "permission": permission,
             "granted_at": repo_created_at
@@ -56,7 +56,7 @@ def new_user_handler(
             collab_properties["role"] = role
         logger.debug(f"      COLLABORATOR relationship properties: {collab_properties}")
 
-        logger.debug(f"      Creating COLLABORATOR relationship: {person_id} -> {repo_id}")
+        logger.debug(f"      Creating COLLABORATOR relationship between {person_id} and {repo_id}")
         collaborator_relationship = Relationship(
             type="COLLABORATOR",
             from_id=person_id,

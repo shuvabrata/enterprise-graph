@@ -18,7 +18,7 @@ def get_fully_synced_pr_numbers(
     # These states are immutable - once a PR is merged or closed, it won't change anymore
     # This allows us to skip re-processing them on subsequent syncs
     query = """
-    MATCH (pr:PullRequest)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]->(r:Repository {id: $repo_id})
+    MATCH (pr:PullRequest)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]-(r:Repository {id: $repo_id})
     WHERE pr.state IN ['merged', 'closed']
     RETURN collect(pr.number) as processed_pr_numbers
     """

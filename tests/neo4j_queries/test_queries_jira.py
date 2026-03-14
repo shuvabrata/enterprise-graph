@@ -31,7 +31,7 @@ def test_unassigned_critical_issues(query_executor, expectations, track_result):
     """Critical issues without assignees - Data Quality check."""
     query = """
     MATCH (i:Issue)
-    WHERE i.priority = 'Critical' AND NOT exists((i)-[:ASSIGNED_TO]->())
+    WHERE i.priority = 'Critical' AND NOT exists((i)-[:ASSIGNED_TO]-())
     RETURN i.key, i.summary, i.status
     """
     
@@ -106,7 +106,7 @@ def test_epic_timeline(query_executor, expectations, track_result):
 def test_epics_by_team(query_executor, expectations, track_result):
     """Epics assigned to each team."""
     query = """
-    MATCH (e:Epic)-[:TEAM]->(t:Team)
+    MATCH (e:Epic)-[:TEAM]-(t:Team)
     RETURN t.name, count(e) as epic_count, collect(e.key) as epics
     ORDER BY epic_count DESC
     """
@@ -125,7 +125,7 @@ def test_epics_by_team(query_executor, expectations, track_result):
 def test_epic_ownership_distribution(query_executor, expectations, track_result):
     """Epic ownership by person."""
     query = """
-    MATCH (e:Epic)-[:ASSIGNED_TO]->(p:Person)
+    MATCH (e:Epic)-[:ASSIGNED_TO]-(p:Person)
     RETURN p.name, p.role, count(e) as epic_count
     ORDER BY epic_count DESC
     """
@@ -144,8 +144,8 @@ def test_epic_ownership_distribution(query_executor, expectations, track_result)
 def test_initiatives_with_assignees(query_executor, expectations, track_result):
     """Initiatives with assignees and reporters."""
     query = """
-    MATCH (i:Initiative)-[:ASSIGNED_TO]->(assignee:Person),
-          (i)-[:REPORTED_BY]->(reporter:Person)
+    MATCH (i:Initiative)-[:ASSIGNED_TO]-(assignee:Person),
+          (i)-[:REPORTED_BY]-(reporter:Person)
     RETURN i.key, i.summary, 
            assignee.name as assignee, assignee.title as assignee_title,
            reporter.name as reporter, reporter.title as reporter_title,
@@ -189,7 +189,7 @@ def test_sprint_burndown_data(query_executor, expectations, track_result):
 def test_work_by_person(query_executor, expectations, track_result):
     """Work assigned to each person."""
     query = """
-    MATCH (i:Issue)-[:ASSIGNED_TO]->(p:Person)
+    MATCH (i:Issue)-[:ASSIGNED_TO]-(p:Person)
     RETURN p.name, p.title, 
            count(i) as total_issues,
            sum(i.story_points) as total_points
@@ -230,7 +230,7 @@ def test_bug_distribution_by_epic(query_executor, expectations, track_result):
 def test_bugs_related_to_stories(query_executor, expectations, track_result):
     """Bugs linked to specific stories."""
     query = """
-    MATCH (bug:Issue {type: 'Bug'})-[:RELATES_TO]->(story:Issue {type: 'Story'})
+    MATCH (bug:Issue {type: 'Bug'})-[:RELATES_TO]-(story:Issue {type: 'Story'})
     RETURN bug.key, story.key as story, bug.summary
     """
     
@@ -267,8 +267,8 @@ def test_dependencies_and_blockers(query_executor, expectations, track_result):
 def test_epics_with_owners_and_teams(query_executor, expectations, track_result):
     """Complete epic context with owners, teams, and initiatives."""
     query = """
-    MATCH (e:Epic)-[:ASSIGNED_TO]->(owner:Person)
-    MATCH (e)-[:TEAM]->(team:Team)
+    MATCH (e:Epic)-[:ASSIGNED_TO]-(owner:Person)
+    MATCH (e)-[:TEAM]-(team:Team)
     MATCH (e)-[:PART_OF]->(i:Initiative)
     RETURN e.key, e.summary, 
            owner.name as owner, owner.title as owner_title,

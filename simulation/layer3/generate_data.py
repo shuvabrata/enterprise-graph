@@ -236,7 +236,7 @@ def create_part_of_relationships(epics: List[Dict[str, Any]]) -> List[Dict[str, 
     return relationships
 
 def create_assigned_to_relationships(epics: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Create ASSIGNED_TO relationships: Epic → Person."""
+    """Create ASSIGNED_TO relationships: Epic ↔ Person (undirected)."""
     relationships = []
     
     for epic in epics:
@@ -251,7 +251,7 @@ def create_assigned_to_relationships(epics: List[Dict[str, Any]]) -> List[Dict[s
     return relationships
 
 def create_team_relationships(epics: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Create TEAM relationships: Epic → Team."""
+    """Create TEAM relationships: Epic ↔ Team (undirected)."""
     relationships = []
     
     for epic in epics:

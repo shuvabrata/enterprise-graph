@@ -120,8 +120,8 @@ def process_github_user(
             last_updated_at=datetime.now(timezone.utc).isoformat()
         )
 
-        # Create MAPS_TO relationship from IdentityMapping to Person
-        logger.debug(f"        Creating MAPS_TO relationship: {identity_id} -> {person_id}")
+        # Create MAPS_TO relationship (undirected) between IdentityMapping and Person
+        logger.debug(f"        Creating MAPS_TO relationship between {identity_id} and {person_id}")
         maps_to_relationship = Relationship(
             type="MAPS_TO",
             from_id=identity.id,

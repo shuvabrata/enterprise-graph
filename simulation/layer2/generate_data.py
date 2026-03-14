@@ -155,7 +155,7 @@ def create_part_of_relationships(initiatives: List[Dict[str, Any]],
     return relationships
 
 def create_owned_by_relationships(initiatives: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Create ASSIGNED_TO relationships: Initiative → Person."""
+    """Create ASSIGNED_TO relationships: Initiative ↔ Person (undirected)."""
     relationships = []
     
     for initiative in initiatives:

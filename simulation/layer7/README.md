@@ -72,12 +72,12 @@ Links a commit to the branch it belongs to.
 (:Commit)-[:PART_OF]->(:Branch {name: "main", is_default: true})
 ```
 
-### AUTHORED_BY: Commit → Person
+### AUTHORED_BY: Commit ↔ Person (undirected)
 Links a commit to the developer who authored it.
 
 **Example:**
 ```cypher
-(:Commit)-[:AUTHORED_BY]->(:Person {name: "Alice Johnson", role: "Engineer"})
+(:Commit)-[:AUTHORED_BY]-(:Person {name: "Alice Johnson", role: "Engineer"})
 ```
 
 ### MODIFIES: Commit → File
@@ -147,7 +147,7 @@ This will:
 
 ### Top Contributors
 ```cypher
-MATCH (p:Person)<-[:AUTHORED_BY]-(c:Commit)
+MATCH (p:Person)-[:AUTHORED_BY]-(c:Commit)
 RETURN p.name as name, p.title as title, count(c) as commits
 ORDER BY commits DESC
 LIMIT 10
@@ -155,7 +155,7 @@ LIMIT 10
 
 ### Commits per Repository
 ```cypher
-MATCH (c:Commit)-[:PART_OF]->(b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (c:Commit)-[:PART_OF]->(b:Branch)-[:BRANCH_OF]-(r:Repository)
 WHERE b.is_default = true
 RETURN r.name as repo, count(c) as commits
 ORDER BY commits DESC
@@ -179,7 +179,7 @@ LIMIT 10
 
 ### Developer Activity by Language
 ```cypher
-MATCH (p:Person)<-[:AUTHORED_BY]-(c:Commit)-[:MODIFIES]->(f:File)
+MATCH (p:Person)-[:AUTHORED_BY]-(c:Commit)-[:MODIFIES]->(f:File)
 RETURN p.name as developer, f.language as language, 
        count(DISTINCT c) as commits, count(f) as files_touched
 ORDER BY commits DESC
@@ -208,7 +208,7 @@ ORDER BY is_test
 
 ### Commit Timeline
 ```cypher
-MATCH (c:Commit)-[:PART_OF]->(b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (c:Commit)-[:PART_OF]->(b:Branch)-[:BRANCH_OF]-(r:Repository)
 WHERE b.is_default = true
 RETURN r.name as repo,
        date(c.timestamp).month as month,

@@ -20,15 +20,15 @@ This layer adds high-level business initiatives (Jira-like work items) that conn
 
 **Relationships:**
 - `PART_OF` ↔ `CONTAINS`: Initiative ↔ Project
-- `ASSIGNED_TO` ↔ `ASSIGNED_TO`: Initiative ↔ IdentityMapping (Jira)
-- `REPORTED_BY` ↔ `REPORTED_BY`: Initiative ↔ IdentityMapping (Jira)
+- `ASSIGNED_TO` (undirected): Initiative ↔ IdentityMapping (Jira)
+- `REPORTED_BY` (undirected): Initiative ↔ IdentityMapping (Jira)
 
 ## Key Design: IdentityMapping vs Person
 
 **Important**: Initiatives link to **IdentityMapping (Jira)**, not Person directly.
 
 ```
-Initiative -[:ASSIGNED_TO]-> IdentityMapping(provider='Jira') -[:MAPS_TO]-> Person
+Initiative -[:ASSIGNED_TO]- IdentityMapping(provider='Jira') -[:MAPS_TO]- Person
 ```
 
 **Why?** This matches real-world Jira data where:
@@ -193,8 +193,8 @@ The loader:
 
 ```cypher
 // Through the Jira identity
-MATCH (p:Person {name: 'Alice Johnson'})<-[:MAPS_TO]-(jira:IdentityMapping {provider: 'Jira'})
-      <-[:ASSIGNED_TO]-(i:Initiative)
+MATCH (p:Person {name: 'Alice Johnson'})-[:MAPS_TO]-(jira:IdentityMapping {provider: 'Jira'})
+      -[:ASSIGNED_TO]-(i:Initiative)
 RETURN i.key, i.summary, i.status, i.priority
 ORDER BY i.due_date
 ```
@@ -202,9 +202,9 @@ ORDER BY i.due_date
 ### All work for a person across tools
 
 ```cypher
-MATCH (p:Person {name: 'Alice Johnson'})<-[:MAPS_TO]-(identity:IdentityMapping)
-OPTIONAL MATCH (identity)<-[:ASSIGNED_TO]-(initiative:Initiative)
-OPTIONAL MATCH (identity)<-[:AUTHORED_BY]-(commit:Commit)
+MATCH (p:Person {name: 'Alice Johnson'})-[:MAPS_TO]-(identity:IdentityMapping)
+OPTIONAL MATCH (identity)-[:ASSIGNED_TO]-(initiative:Initiative)
+OPTIONAL MATCH (identity)-[:AUTHORED_BY]-(commit:Commit)
 RETURN identity.provider,
        collect(DISTINCT initiative.key) as initiatives,
        count(DISTINCT commit) as commits
@@ -222,7 +222,7 @@ ORDER BY i.start_date
 
 ```cypher
 MATCH (proj:Project)<-[:PART_OF]-(i:Initiative)
-OPTIONAL MATCH (i)-[:ASSIGNED_TO]->(jira:IdentityMapping)-[:MAPS_TO]->(assignee:Person)
+OPTIONAL MATCH (i)-[:ASSIGNED_TO]-(jira:IdentityMapping)-[:MAPS_TO]-(assignee:Person)
 RETURN proj.name,
        collect({
          key: i.key,
@@ -264,11 +264,13 @@ All operations use MERGE for idempotency:
 - Updates existing nodes
 - Creates missing nodes automatically
 
-### Bidirectional Relationships
-Relationships are automatically bidirectional:
+### Relationship Directionality
+Directional pairs create reverse edges automatically:
 - `PART_OF` creates reverse `CONTAINS`
-- `ASSIGNED_TO` creates reverse `ASSIGNED_TO`
-- `REPORTED_BY` creates reverse `REPORTED_BY`
+
+Undirected relationships are stored once and queried without direction:
+- `ASSIGNED_TO` uses `-[:ASSIGNED_TO]-`
+- `REPORTED_BY` uses `-[:REPORTED_BY]-`
 
 ## Next Layer
 

@@ -90,11 +90,11 @@ def load_relationships():
                     properties=rel_data.get('properties', {})
                 )
                 
-                # Merge relationship (handles bidirectional automatically)
+                # Merge relationship (handles directionality automatically)
                 merge_relationship(session, relationship)
                 relationship_count += 1
             
-            print(f"✓ Loaded {relationship_count} COLLABORATOR relationships (bidirectional)")
+            print(f"✓ Loaded {relationship_count} COLLABORATOR relationships")
     
     finally:
         driver.close()
@@ -122,7 +122,7 @@ def validate_layer5():
             # 2. Repository collaborators by team (WRITE access)
             print("\n2. Repository WRITE Access by Team:")
             result = session.run("""
-                MATCH (t:Team)-[c:COLLABORATOR]->(r:Repository)
+                MATCH (t:Team)-[c:COLLABORATOR]-(r:Repository)
                 WHERE c.permission = 'WRITE'
                 RETURN t.name as team, collect(r.name) as repositories
                 ORDER BY team
@@ -133,7 +133,7 @@ def validate_layer5():
             # 3. Repository maintainers (individuals with WRITE access)
             print("\n3. Repository Maintainers (Individual WRITE Access):")
             result = session.run("""
-                MATCH (p:Person)-[c:COLLABORATOR]->(r:Repository)
+                MATCH (p:Person)-[c:COLLABORATOR]-(r:Repository)
                 WHERE c.permission = 'WRITE'
                 RETURN r.name as repository, 
                        collect(p.name) as maintainers
@@ -145,7 +145,7 @@ def validate_layer5():
             # 4. Cross-team access (teams with READ permission)
             print("\n4. Cross-Team READ Access:")
             result = session.run("""
-                MATCH (t:Team)-[c:COLLABORATOR]->(r:Repository)
+                MATCH (t:Team)-[c:COLLABORATOR]-(r:Repository)
                 WHERE c.permission = 'READ'
                 RETURN r.name as repository, 
                        collect(t.name) as teams_with_read_access
@@ -158,7 +158,7 @@ def validate_layer5():
             # 5. Permission summary per repository
             print("\n5. Permission Summary per Repository:")
             result = session.run("""
-                MATCH (r:Repository)<-[c:COLLABORATOR]-(collaborator)
+                MATCH (r:Repository)-[c:COLLABORATOR]-(collaborator)
                 RETURN r.name as repository,
                        sum(CASE WHEN c.permission = 'WRITE' THEN 1 ELSE 0 END) as write_access,
                        sum(CASE WHEN c.permission = 'READ' THEN 1 ELSE 0 END) as read_access,
@@ -171,19 +171,11 @@ def validate_layer5():
                       f"READ={record['read_access']}, "
                       f"Total={record['total_collaborators']}")
             
-            # 6. Verify bidirectional relationships
-            print("\n6. Bidirectional Relationship Verification:")
-            result = session.run("""
-                MATCH (t:Team)-[c1:COLLABORATOR]->(r:Repository)
-                MATCH (r)-[c2:COLLABORATOR]->(t)
-                WHERE c1.permission <> c2.permission
-                RETURN count(*) as mismatched
-            """)
-            count = result.single()['mismatched']
-            if count == 0:
-                print("   ✓ All bidirectional relationships have matching properties")
-            else:
-                print(f"   ✗ Found {count} mismatched bidirectional relationships")
+            # 6. COLLABORATOR relationship count
+            print("\n6. COLLABORATOR Relationship Count:")
+            result = session.run("MATCH ()-[r:COLLABORATOR]-() RETURN count(r) as rel_count")
+            count = result.single()['rel_count']
+            print(f"   ✓ {count} COLLABORATOR relationships (undirected)")
             
             print("\n" + "=" * 60)
     

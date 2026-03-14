@@ -70,10 +70,10 @@ We will build the simulation incrementally, validating each layer before proceed
 - **IdentityMapping**: Each person will have mappings for GitHub, Jira
 
 #### Relationships
-- `MEMBER_OF`: Person → Team
+- `MEMBER_OF`: Person ↔ Team (undirected)
 - `REPORTS_TO`: Person → Person (manager)
 - `MANAGES`: Person → Team
-- `MAPS_TO`: IdentityMapping → Person
+- `MAPS_TO`: IdentityMapping ↔ Person (undirected)
 
 #### Test Data File
 - `simulation/data/layer1_people_teams.json`
@@ -89,7 +89,7 @@ MATCH (p:Person)-[:REPORTS_TO]->(m:Person)
 RETURN p.name, m.name, p.title
 
 // Team sizes
-MATCH (t:Team)<-[:MEMBER_OF]-(p:Person)
+MATCH (t:Team)-[:MEMBER_OF]-(p:Person)
 RETURN t.name, count(p) as team_size
 ORDER BY team_size DESC
 ```
@@ -108,8 +108,8 @@ ORDER BY team_size DESC
 
 #### Relationships
 - `PART_OF`: Initiative → Project
-- `ASSIGNED_TO`: Initiative → Person (Senior/Staff engineer - technical owner)
-- `REPORTED_BY`: Initiative → Person (PM or Staff engineer - business stakeholder)
+- `ASSIGNED_TO`: Initiative ↔ Person (undirected, senior/staff engineer - technical owner)
+- `REPORTED_BY`: Initiative ↔ Person (undirected, PM or staff engineer - business stakeholder)
 
 #### Test Data File
 - `simulation/data/layer2_initiatives.json`
@@ -117,8 +117,8 @@ ORDER BY team_size DESC
 #### Validation Queries
 ```cypher
 // List all initiatives with assignees and reporters
-MATCH (i:Initiative)-[:ASSIGNED_TO]->(assignee:Person)
-MATCH (i)-[:REPORTED_BY]->(reporter:Person)
+MATCH (i:Initiative)-[:ASSIGNED_TO]-(assignee:Person)
+MATCH (i)-[:REPORTED_BY]-(reporter:Person)
 RETURN i.key, i.summary, 
        assignee.name as assignee, assignee.title as assignee_title,
        reporter.name as reporter, reporter.title as reporter_title,
@@ -156,8 +156,8 @@ ORDER BY i.start_date
 
 #### Relationships
 - `PART_OF`: Epic → Initiative
-- `ASSIGNED_TO`: Epic → Person (epic owner - engineer or PM)
-- `TEAM`: Epic → Team (team working on it)
+- `ASSIGNED_TO`: Epic ↔ Person (undirected, epic owner - engineer or PM)
+- `TEAM`: Epic ↔ Team (undirected, team working on it)
 
 #### Test Data File
 - `simulation/data/layer3_epics.json`
@@ -169,12 +169,12 @@ MATCH (e:Epic)-[:PART_OF]->(i:Initiative)
 RETURN i.summary, collect(e.key) as epics
 
 // Epic ownership distribution
-MATCH (e:Epic)-[:ASSIGNED_TO]->(p:Person)
+MATCH (e:Epic)-[:ASSIGNED_TO]-(p:Person)
 RETURN p.name, p.role, count(e) as epic_count
 ORDER BY epic_count DESC
 
 // Cross-team epics
-MATCH (e:Epic)-[:TEAM]->(t:Team)
+MATCH (e:Epic)-[:TEAM]-(t:Team)
 WITH e, count(t) as team_count
 WHERE team_count > 1
 RETURN e.key, e.summary, team_count
@@ -207,12 +207,12 @@ RETURN e.key, e.summary, team_count
 
 #### Relationships
 - `PART_OF`: Issue → Epic
-- `ASSIGNED_TO`: Issue → Person
-- `REPORTED_BY`: Issue → Person
+- `ASSIGNED_TO`: Issue ↔ Person (undirected)
+- `REPORTED_BY`: Issue ↔ Person (undirected)
 - `IN_SPRINT`: Issue → Sprint
 - `BLOCKS`: Issue → Issue (dependencies)
 - `DEPENDS_ON`: Issue → Issue
-- `RELATES_TO`: Bug → Story (bug found in story)
+- `RELATES_TO`: Bug ↔ Story (undirected, bug found in story)
 - `PARENT_OF`: Story → Bug (for sub-tasks)
 
 #### Test Data File
@@ -232,13 +232,13 @@ MATCH (i:Issue {status: 'Blocked'})-[:BLOCKS]->(blocked:Issue)
 RETURN i.key, i.summary, collect(blocked.key) as blocking
 
 // Bug distribution by team
-MATCH (bug:Issue {type: 'Bug'})-[:ASSIGNED_TO]->(p:Person)-[:MEMBER_OF]->(t:Team)
+MATCH (bug:Issue {type: 'Bug'})-[:ASSIGNED_TO]-(p:Person)-[:MEMBER_OF]-(t:Team)
 RETURN t.name, count(bug) as bug_count
 ORDER BY bug_count DESC
 
 // Unassigned critical issues
 MATCH (i:Issue)
-WHERE i.priority = 'Critical' AND NOT exists((i)-[:ASSIGNED_TO]->())
+WHERE i.priority = 'Critical' AND NOT exists((i)-[:ASSIGNED_TO]-())
 RETURN i.key, i.summary, i.status
 ```
 
@@ -273,18 +273,18 @@ Properties:
 ```
 
 #### Relationships (Directly Discoverable)
-- `COLLABORATOR`: Person → Repository
+- `COLLABORATOR`: Person ↔ Repository (undirected)
   - Properties: `permission` ("READ" or "WRITE")
   - Source: GitHub collaborator API, repo settings
   - WRITE permission includes: push, merge, admin access
   - READ permission includes: pull, clone, view-only access
   
-- `COLLABORATOR`: Team → Repository
+- `COLLABORATOR`: Team ↔ Repository (undirected)
   - Properties: `permission` ("READ" or "WRITE")
   - Source: GitHub team permissions in organization settings
   - Team members inherit the team's permission level
 
-**Note**: Epic → Repository relationships are NOT directly discoverable. Instead, they will be **inferred** in Layer 7 through the commit chain: `Epic -[:PART_OF]-> Story -[:REFERENCES]<- Commit -[:PART_OF]-> Branch -[:BRANCH_OF]-> Repository`
+**Note**: Epic → Repository relationships are NOT directly discoverable. Instead, they will be **inferred** in Layer 7 through the commit chain: `Epic -[:PART_OF]-> Story -[:REFERENCES]<- Commit -[:PART_OF]-> Branch -[:BRANCH_OF]- Repository`
 
 #### Permission Distribution Strategy
 - Each repo will have 1 team with WRITE access (owning team)
@@ -298,13 +298,13 @@ Properties:
 #### Validation Queries
 ```cypher
 // Repository collaborators by team (WRITE access)
-MATCH (t:Team)-[c:COLLABORATOR]->(r:Repository)
+MATCH (t:Team)-[c:COLLABORATOR]-(r:Repository)
 WHERE c.permission = 'WRITE'
 RETURN t.name as team, collect(r.name) as repositories
 ORDER BY team
 
 // Repository maintainers (individuals with WRITE access)
-MATCH (p:Person)-[c:COLLABORATOR]->(r:Repository)
+MATCH (p:Person)-[c:COLLABORATOR]-(r:Repository)
 WHERE c.permission = 'WRITE'
 RETURN r.name as repository, 
        collect(p.name) as maintainers,
@@ -312,14 +312,14 @@ RETURN r.name as repository,
 ORDER BY repository
 
 // Cross-team access (teams with READ permission)
-MATCH (t:Team)-[c:COLLABORATOR]->(r:Repository)
+MATCH (t:Team)-[c:COLLABORATOR]-(r:Repository)
 WHERE c.permission = 'READ'
 RETURN r.name as repository, 
        collect(t.name) as teams_with_read_access
 ORDER BY repository
 
 // People collaborating across multiple repos
-MATCH (p:Person)-[c:COLLABORATOR]->(r:Repository)
+MATCH (p:Person)-[c:COLLABORATOR]-(r:Repository)
 WITH p, c.permission as perm, collect(r.name) as repos
 WHERE size(repos) > 1
 RETURN p.name, p.title, perm, repos, size(repos) as repo_count
@@ -327,11 +327,11 @@ ORDER BY repo_count DESC, perm DESC
 
 // Repos without WRITE collaborators (should be none)
 MATCH (r:Repository)
-WHERE NOT exists((r)<-[:COLLABORATOR {permission: 'WRITE'}]-())
+WHERE NOT exists((r)-[:COLLABORATOR {permission: 'WRITE'}]-())
 RETURN r.name
 
 // Permission summary per repository
-MATCH (r:Repository)<-[c:COLLABORATOR]-(collaborator)
+MATCH (r:Repository)-[c:COLLABORATOR]-(collaborator)
 RETURN r.name as repository,
        sum(CASE WHEN c.permission = 'WRITE' THEN 1 ELSE 0 END) as write_access,
        sum(CASE WHEN c.permission = 'READ' THEN 1 ELSE 0 END) as read_access,
@@ -376,7 +376,7 @@ Properties:
 4. `last_commit_timestamp` is sufficient for identifying stale branches
 
 #### Relationships (Directly Discoverable)
-- `BRANCH_OF`: Branch → Repository
+- `BRANCH_OF`: Branch ↔ Repository (undirected)
   - Source: Git API, each branch belongs to exactly one repository
   - Every branch must have this relationship
 
@@ -391,7 +391,7 @@ Properties:
 #### Validation Queries
 ```cypher
 // Total branches per repository
-MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
 RETURN r.name, 
        count(b) as total_branches,
        sum(CASE WHEN b.is_default THEN 1 ELSE 0 END) as default_branches,
@@ -399,7 +399,7 @@ RETURN r.name,
 ORDER BY total_branches DESC
 
 // Active branches per repo (non-default, not deleted)
-MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
 WHERE b.is_default = false AND NOT b.is_deleted
 RETURN r.name, count(b) as active_branch_count
 ORDER BY active_branch_count DESC
@@ -414,14 +414,14 @@ RETURN b.name, b.last_commit_timestamp,
 ORDER BY days_old DESC
 
 // Branches linked to Jira (by naming convention)
-MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
 WHERE b.name =~ '.*/(PLAT|PORT|DATA)-[0-9]+.*'
 RETURN b.name, r.name,
        [x in split(b.name, '/') WHERE x =~ '(PLAT|PORT|DATA)-[0-9]+'][0] as jira_key
 ORDER BY r.name, b.name
 
 // Protected branches by repository
-MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
 WHERE b.is_protected = true
 RETURN r.name, collect(b.name) as protected_branches
 ORDER BY r.name
@@ -480,7 +480,7 @@ Properties:
 
 #### Relationships
 - `PART_OF`: Commit → Branch (always to the default/main branch)
-- `AUTHORED_BY`: Commit → Person
+- `AUTHORED_BY`: Commit ↔ Person (undirected)
 - `MODIFIES`: Commit → File (tracks all files changed in the commit)
   - Properties: `{additions, deletions}` - per-file change stats from Git API
 - `REFERENCES`: Commit → Issue (if Jira key pattern exists in commit message)
@@ -518,7 +518,7 @@ Track **all files** modified in commits across repositories:
 #### Validation Queries
 ```cypher
 // Top contributors
-MATCH (p:Person)<-[:AUTHORED_BY]-(c:Commit)
+MATCH (p:Person)-[:AUTHORED_BY]-(c:Commit)
 RETURN p.name, p.title, count(c) as commit_count
 ORDER BY commit_count DESC
 LIMIT 10
@@ -535,7 +535,7 @@ MATCH (c:Commit)-[:REFERENCES]->(i:Issue)
 RETURN i.type, count(c) as linked_commits
 
 // Find hotspot files (high churn + many authors)
-MATCH (f:File)<-[:MODIFIES]-(c:Commit)-[:AUTHORED_BY]->(p:Person)
+MATCH (f:File)<-[:MODIFIES]-(c:Commit)-[:AUTHORED_BY]-(p:Person)
 WHERE c.timestamp >= datetime() - duration({days: 60})
 RETURN f.path, 
        count(DISTINCT c) as commit_count,
@@ -545,7 +545,7 @@ ORDER BY commit_count DESC, author_count DESC
 LIMIT 10
 
 // Commits per repository (main branch activity)
-MATCH (c:Commit)-[:PART_OF]->(b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (c:Commit)-[:PART_OF]->(b:Branch)-[:BRANCH_OF]-(r:Repository)
 WHERE b.is_default = true
 RETURN r.name, 
        count(c) as commits,
@@ -669,7 +669,7 @@ However, ALL PRs retain their commit metadata as properties (`commits_count`, `a
 #### Validation Queries
 ```cypher
 // PRs by state and repository
-MATCH (pr:PullRequest)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (pr:PullRequest)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]-(r:Repository)
 RETURN r.name, pr.state, count(pr) as pr_count
 ORDER BY r.name, pr.state
 
@@ -718,8 +718,8 @@ RETURN pr.number, pr.title, pr.created_at, pr.merged_at
 ORDER BY pr.merged_at DESC
 
 // Cross-team reviews (collaboration)
-MATCH (pr:PullRequest)-[:CREATED_BY]->(author:Person)-[:MEMBER_OF]->(author_team:Team)
-MATCH (pr)-[:REVIEWED_BY]->(reviewer:Person)-[:MEMBER_OF]->(reviewer_team:Team)
+MATCH (pr:PullRequest)-[:CREATED_BY]->(author:Person)-[:MEMBER_OF]-(author_team:Team)
+MATCH (pr)-[:REVIEWED_BY]->(reviewer:Person)-[:MEMBER_OF]-(reviewer_team:Team)
 WHERE author_team <> reviewer_team
 RETURN author_team.name as pr_team, 
        reviewer_team.name as reviewer_team,
@@ -767,7 +767,7 @@ RETURN label, count(*) as pr_count,
 ORDER BY pr_count DESC
 
 // Team review responsiveness
-MATCH (pr:PullRequest)-[:REQUESTED_REVIEWER]->(reviewer:Person)-[:MEMBER_OF]->(t:Team)
+MATCH (pr:PullRequest)-[:REQUESTED_REVIEWER]->(reviewer:Person)-[:MEMBER_OF]-(t:Team)
 MATCH (pr)-[rev:REVIEWED_BY]->(reviewer)
 WITH t, pr, rev, duration.between(pr.created_at, rev.submitted_at).hours as response_hours
 RETURN t.name, 

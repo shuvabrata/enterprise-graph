@@ -13,7 +13,7 @@ def new_team_handler(
     repo_created_at: str,
     processed_users_cache: Optional[Dict[str, Any]] = None
 ) -> None:
-    """Handle a new team by creating Team node and COLLABORATOR relationship to repository.
+    """Handle a new team by creating Team node and COLLABORATOR relationship (undirected) to repository.
 
     Args:
         session: Neo4j session
@@ -56,8 +56,8 @@ def new_team_handler(
             url=team_url
         )
 
-        # Create COLLABORATOR relationship from Team to Repository
-        logger.debug(f"      Creating COLLABORATOR relationship: {team_id} -> {repo_id}")
+        # Create COLLABORATOR relationship (undirected) between Team and Repository
+        logger.debug(f"      Creating COLLABORATOR relationship between {team_id} and {repo_id}")
         logger.debug(f"      Relationship properties: permission='{permission}', granted_at='{repo_created_at}'")
         relationship = Relationship(
             type="COLLABORATOR",
@@ -128,7 +128,7 @@ def new_team_handler(
                 else:
                     # User was recently refreshed - get existing person_id from IdentityMapping
                     query = """
-                    MATCH (i:IdentityMapping {provider: 'GitHub', username: $username})-[:MAPS_TO]->(p:Person)
+                    MATCH (i:IdentityMapping {provider: 'GitHub', username: $username})-[:MAPS_TO]-(p:Person)
                     RETURN p.id as person_id
                     """
                     result = session.run(query, username=github_login).single()
@@ -147,7 +147,7 @@ def new_team_handler(
                 
                 # Always create MEMBER_OF relationship (regardless of refresh status)
                 if person_id:
-                    logger.debug(f"      Creating MEMBER_OF relationship: {person_id} -> {team_id}")
+                    logger.debug(f"      Creating MEMBER_OF relationship between {person_id} and {team_id}")
                     member_relationship = Relationship(
                         type="MEMBER_OF",
                         from_id=person_id,

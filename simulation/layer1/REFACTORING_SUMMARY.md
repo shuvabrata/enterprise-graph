@@ -71,12 +71,12 @@ All operations use `MERGE` for idempotency:
 - Safe to run multiple times
 - Updates existing nodes with new data
 
-### 2. Bidirectional Relationships
-Automatically creates both directions:
-- `MEMBER_OF` (Person ↔ Team)
+### 2. Relationship Directionality
+Automatically handles directionality:
+- `MEMBER_OF` (Person ↔ Team, undirected)
+- `MAPS_TO` (IdentityMapping ↔ Person, undirected)
 - `REPORTS_TO` → `MANAGES`
 - `MANAGES` → `MANAGED_BY`
-- `MAPS_TO` (IdentityMapping ↔ Person)
 
 ### 3. Flexible Relationship Handling
 Two approaches supported:

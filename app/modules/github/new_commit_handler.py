@@ -350,7 +350,7 @@ def new_commit_handler(
         )
         merge_relationship(session, part_of_rel)
 
-        # Create AUTHORED_BY relationship (Commit → Person)
+        # Create AUTHORED_BY relationship (undirected)
         authored_by_rel = Relationship(
             type="AUTHORED_BY",
             from_id=commit_id,

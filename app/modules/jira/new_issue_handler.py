@@ -126,7 +126,7 @@ def new_issue_handler(
                     to_type="Epic"
                 ))
         
-        # 2. ASSIGNED_TO -> Person
+        # 2. ASSIGNED_TO (undirected) - Person
         assignee = fields.get('assignee')
         if assignee:
             assignee_id = new_jira_user_handler(session, assignee, person_cache)
@@ -139,7 +139,7 @@ def new_issue_handler(
                     to_type="Person"
                 ))
         
-        # 3. REPORTED_BY -> Person
+        # 3. REPORTED_BY (undirected) - Person
         reporter = fields.get('reporter')
         if reporter:
             reporter_id = new_jira_user_handler(session, reporter, person_cache)
@@ -171,7 +171,7 @@ def new_issue_handler(
                             to_type="Sprint"
                         ))
         
-        # 5. TEAM -> Team (if issue has a team assignment)
+        # 5. TEAM (undirected) - Team (if issue has a team assignment)
         # Get configurable field name from environment
         team_field_name = os.getenv('JIRA_ISSUE_TEAM_FIELD', 'Team')
         team_field = fields.get(team_field_name)
@@ -254,14 +254,6 @@ def new_issue_handler(
                         from_type="Issue",
                         to_type="Issue"
                     ))
-                    # Bidirectional
-                    relationships.append(Relationship(
-                        type="RELATES_TO",
-                        from_id=linked_issue_id,
-                        to_id=issue_id,
-                        from_type="Issue",
-                        to_type="Issue"
-                    ))
                 
                 if inward_issue:
                     linked_issue_id = f"issue_jira_{inward_issue.get('id')}"
@@ -269,14 +261,6 @@ def new_issue_handler(
                         type="RELATES_TO",
                         from_id=issue_id,
                         to_id=linked_issue_id,
-                        from_type="Issue",
-                        to_type="Issue"
-                    ))
-                    # Bidirectional
-                    relationships.append(Relationship(
-                        type="RELATES_TO",
-                        from_id=linked_issue_id,
-                        to_id=issue_id,
                         from_type="Issue",
                         to_type="Issue"
                     ))

@@ -12,7 +12,7 @@ from neo4j import GraphDatabase
 from db.models import (
     Project, Initiative, Relationship,
     merge_project, merge_initiative, merge_relationship,
-    create_constraints
+    create_constraints, DIRECTIONAL_RELATIONSHIPS
 )
 
 class Layer2Loader:
@@ -121,12 +121,13 @@ class Layer2Loader:
                 relationship = Relationship(**rel_data)
                 merge_relationship(session, relationship)
                 
-                # Count bidirectional relationships as 2
-                rel_counts[rel_type] = rel_counts.get(rel_type, 0) + 2
+                # Count directional pairs as 2 (reverse edge is created automatically)
+                increment = 2 if rel_type in DIRECTIONAL_RELATIONSHIPS else 1
+                rel_counts[rel_type] = rel_counts.get(rel_type, 0) + increment
             
             # Report results
             for rel_type, count in rel_counts.items():
-                print(f"   ✓ {rel_type}: {count} (includes bidirectional)")
+                print(f"   ✓ {rel_type}: {count} (includes reverse edges for directional pairs)")
             
             if skipped_count > 0:
                 print(f"   - Skipped {skipped_count} ASSIGNED_TO/REPORTED_BY relationships (handled separately)")
@@ -141,8 +142,8 @@ class Layer2Loader:
             # Query 1: List all initiatives with assignees and reporters
             print("\n1. Initiatives with assignees and reporters:")
             query1 = """
-            MATCH (i:Initiative)-[:ASSIGNED_TO]->(assignee:Person)
-            MATCH (i)-[:REPORTED_BY]->(reporter:Person)
+            MATCH (i:Initiative)-[:ASSIGNED_TO]-(assignee:Person)
+            MATCH (i)-[:REPORTED_BY]-(reporter:Person)
             RETURN i.key, i.summary, assignee.name as assignee, reporter.name as reporter, i.status
             ORDER BY i.key
             """

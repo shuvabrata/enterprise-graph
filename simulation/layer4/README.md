@@ -10,12 +10,12 @@ This layer creates granular work items (stories, bugs, tasks) and sprints for tr
 
 **Relationships Created:**
 - `PART_OF`: Issue → Epic (80 relationships)
-- `ASSIGNED_TO`: Issue → Person (80 relationships)
-- `REPORTED_BY`: Issue → Person (80 relationships)
+- `ASSIGNED_TO`: Issue ↔ Person (undirected, 80 relationships)
+- `REPORTED_BY`: Issue ↔ Person (undirected, 80 relationships)
 - `IN_SPRINT`: Issue → Sprint (80 relationships)
 - `BLOCKS`: Issue → Issue (dependencies)
 - `DEPENDS_ON`: Issue → Issue (inverse of BLOCKS)
-- `RELATES_TO`: Bug → Story (5 bugs linked to stories)
+- `RELATES_TO`: Bug ↔ Story (undirected, 5 bugs linked to stories)
 
 ## Work Item Distribution
 
@@ -96,7 +96,7 @@ RETURN e.key, e.summary, count(bug) as bug_count
 ORDER BY bug_count DESC
 
 // Work by person
-MATCH (i:Issue)-[:ASSIGNED_TO]->(p:Person)
+MATCH (i:Issue)-[:ASSIGNED_TO]-(p:Person)
 RETURN p.name, p.title, 
        count(i) as total_issues,
        sum(i.story_points) as total_points
@@ -105,11 +105,11 @@ LIMIT 10
 
 // Unassigned critical issues
 MATCH (i:Issue)
-WHERE i.priority = 'Critical' AND NOT exists((i)-[:ASSIGNED_TO]->())
+WHERE i.priority = 'Critical' AND NOT exists((i)-[:ASSIGNED_TO]-())
 RETURN i.key, i.summary, i.status
 
 // Bugs related to stories
-MATCH (bug:Issue {type: 'Bug'})-[:RELATES_TO]->(story:Issue {type: 'Story'})
+MATCH (bug:Issue {type: 'Bug'})-[:RELATES_TO]-(story:Issue {type: 'Story'})
 RETURN bug.key, story.key as story, bug.summary
 
 // Dependencies and blockers

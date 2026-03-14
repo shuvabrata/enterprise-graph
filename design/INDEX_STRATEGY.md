@@ -97,7 +97,7 @@ Test index usage with PROFILE:
 
 ```cypher
 PROFILE
-MATCH (p:Person {name: "Alice Johnson"})-[:ASSIGNED_TO]->(i:Issue)
+MATCH (p:Person {name: "Alice Johnson"})-[:ASSIGNED_TO]-(i:Issue)
 WHERE i.status = "In Progress"
 RETURN i.key, i.summary;
 ```

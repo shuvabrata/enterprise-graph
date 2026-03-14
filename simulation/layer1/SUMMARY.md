@@ -41,10 +41,10 @@ Created comprehensive `README.md` with:
 - **114 Identity Mappings** (GitHub and Jira for each person)
 
 ### Relationships Created (216 total)
-- **MEMBER_OF**: 50 (people to teams)
+- **MEMBER_OF**: 50 (people ↔ teams, undirected)
 - **REPORTS_TO**: 47 (reporting hierarchy)
 - **MANAGES**: 5 (managers to teams)
-- **MAPS_TO**: 114 (identity mappings to people)
+- **MAPS_TO**: 114 (identity mappings ↔ people, undirected)
 
 ### Team Distribution
 | Team | Size |
@@ -93,11 +93,11 @@ data/
 
 ```cypher
 // View a complete team with all members
-MATCH (t:Team {name: "Platform Team"})<-[:MEMBER_OF]-(p:Person)
+MATCH (t:Team {name: "Platform Team"})-[:MEMBER_OF]-(p:Person)
 RETURN t, p
 
 // Find GitHub username for any person (replace name with actual person from your data)
-MATCH (p:Person)<-[:MAPS_TO]-(i:IdentityMapping {provider: "GitHub"})
+MATCH (p:Person)-[:MAPS_TO]-(i:IdentityMapping {provider: "GitHub"})
 RETURN p.name, i.username
 LIMIT 5
 

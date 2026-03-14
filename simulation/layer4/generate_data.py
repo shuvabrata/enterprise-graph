@@ -390,7 +390,7 @@ def create_issue_dependencies(issues: List[Dict]) -> List[Dict[str, Any]]:
     return relationships
 
 def create_bug_story_relationships(bugs: List[Dict]) -> List[Dict[str, Any]]:
-    """Create RELATES_TO relationships for bugs linked to stories."""
+    """Create RELATES_TO relationships for bugs linked to stories (undirected)."""
     relationships = []
     
     for bug in bugs:
@@ -421,7 +421,7 @@ def create_part_of_relationships(issues: List[Dict]) -> List[Dict[str, Any]]:
     return relationships
 
 def create_assigned_to_relationships(issues: List[Dict]) -> List[Dict[str, Any]]:
-    """Create ASSIGNED_TO relationships: Issue → Person."""
+    """Create ASSIGNED_TO relationships: Issue ↔ Person (undirected)."""
     relationships = []
     
     for issue in issues:

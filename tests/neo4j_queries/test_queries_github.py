@@ -11,7 +11,7 @@ import pytest
 def test_repository_ownership(query_executor, expectations, track_result):
     """View repositories with owning teams (WRITE access)."""
     query = """
-    MATCH (t:Team)-[c:COLLABORATOR {permission: 'WRITE'}]->(r:Repository)
+    MATCH (t:Team)-[c:COLLABORATOR {permission: 'WRITE'}]-(r:Repository)
     RETURN t.name, r.name, r.language
     ORDER BY t.name, r.name
     """
@@ -30,7 +30,7 @@ def test_repository_ownership(query_executor, expectations, track_result):
 def test_repository_maintainers(query_executor, expectations, track_result):
     """Find maintainers (people with WRITE access)."""
     query = """
-    MATCH (p:Person)-[c:COLLABORATOR {permission: 'WRITE'}]->(r:Repository)
+    MATCH (p:Person)-[c:COLLABORATOR {permission: 'WRITE'}]-(r:Repository)
     RETURN r.name, collect(p.name) as maintainers
     ORDER BY r.name
     """
@@ -49,7 +49,7 @@ def test_repository_maintainers(query_executor, expectations, track_result):
 def test_cross_team_collaborations(query_executor, expectations, track_result):
     """Teams with READ access to repositories."""
     query = """
-    MATCH (t:Team)-[c:COLLABORATOR {permission: 'READ'}]->(r:Repository)
+    MATCH (t:Team)-[c:COLLABORATOR {permission: 'READ'}]-(r:Repository)
     RETURN r.name, collect(t.name) as read_access_teams
     ORDER BY r.name
     """
@@ -68,7 +68,7 @@ def test_cross_team_collaborations(query_executor, expectations, track_result):
 def test_top_contributors(query_executor, expectations, track_result):
     """Top 10 contributors by commit count."""
     query = """
-    MATCH (p:Person)<-[:AUTHORED_BY]-(c:Commit)
+    MATCH (p:Person)-[:AUTHORED_BY]-(c:Commit)
     RETURN p.name as name, p.title as title, count(c) as commits
     ORDER BY commits DESC
     LIMIT 10
@@ -111,7 +111,7 @@ def test_stale_branches(query_executor, expectations, track_result):
 def test_branches_by_repository(query_executor, expectations, track_result):
     """View all branches by repository."""
     query = """
-    MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+    MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
     RETURN r.name, collect(b.name) as branches
     ORDER BY r.name
     """
@@ -130,7 +130,7 @@ def test_branches_by_repository(query_executor, expectations, track_result):
 def test_active_feature_branches(query_executor, expectations, track_result):
     """Find active non-default branches."""
     query = """
-    MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+    MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
     WHERE NOT b.is_default AND NOT b.is_deleted
     RETURN r.name, b.name, b.last_commit_timestamp
     ORDER BY b.last_commit_timestamp DESC
@@ -150,7 +150,7 @@ def test_active_feature_branches(query_executor, expectations, track_result):
 def test_protected_branches(query_executor, expectations, track_result):
     """Protected branches across all repos."""
     query = """
-    MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+    MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
     WHERE b.is_protected
     RETURN r.name, collect(b.name) as protected_branches
     ORDER BY r.name
@@ -170,7 +170,7 @@ def test_protected_branches(query_executor, expectations, track_result):
 def test_branches_by_work_item(query_executor, expectations, track_result):
     """Branches linked to specific work item."""
     query = """
-    MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+    MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
     WHERE b.name CONTAINS 'PLAT-1'
     RETURN r.name, b.name
     ORDER BY r.name, b.name
@@ -190,7 +190,7 @@ def test_branches_by_work_item(query_executor, expectations, track_result):
 def test_commits_per_repository(query_executor, expectations, track_result):
     """Count commits per repository."""
     query = """
-    MATCH (c:Commit)-[:PART_OF]->(b:Branch)-[:BRANCH_OF]->(r:Repository)
+    MATCH (c:Commit)-[:PART_OF]->(b:Branch)-[:BRANCH_OF]-(r:Repository)
     WHERE b.is_default = true
     RETURN r.name as repo, count(c) as commits
     ORDER BY commits DESC
@@ -249,7 +249,7 @@ def test_commits_referencing_issues(query_executor, expectations, track_result):
 def test_multi_repository_contributors(query_executor, expectations, track_result):
     """People working across multiple repos."""
     query = """
-    MATCH (p:Person)-[c:COLLABORATOR]->(r:Repository)
+    MATCH (p:Person)-[c:COLLABORATOR]-(r:Repository)
     WITH p, c.permission as perm, collect(r.name) as repos
     WHERE size(repos) > 1
     RETURN p.name, p.title, perm, repos, size(repos) as repo_count
@@ -336,7 +336,7 @@ def test_code_churn(query_executor, expectations, track_result):
 def test_developer_activity_by_language(query_executor, expectations, track_result):
     """Developer activity by programming language."""
     query = """
-    MATCH (p:Person)<-[:AUTHORED_BY]-(c:Commit)-[:MODIFIES]->(f:File)
+    MATCH (p:Person)-[:AUTHORED_BY]-(c:Commit)-[:MODIFIES]->(f:File)
     RETURN p.name as developer, f.language as language, 
            count(DISTINCT c) as commits, count(f) as files_touched
     ORDER BY commits DESC
@@ -356,7 +356,7 @@ def test_developer_activity_by_language(query_executor, expectations, track_resu
 def test_pr_velocity_by_repository(query_executor, expectations, track_result):
     """PR velocity and merge rate by repository."""
     query = """
-    MATCH (pr:PullRequest)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]->(r:Repository)
+    MATCH (pr:PullRequest)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]-(r:Repository)
     RETURN r.name as repository,
            count(pr) as total_prs,
            sum(CASE WHEN pr.state = 'merged' THEN 1 ELSE 0 END) as merged,
@@ -452,8 +452,8 @@ def test_pr_size_distribution(query_executor, expectations, track_result):
 def test_cross_team_reviews(query_executor, expectations, track_result):
     """Cross-team code review collaboration."""
     query = """
-    MATCH (pr:PullRequest)-[:CREATED_BY]->(author:Person)-[:MEMBER_OF]->(author_team:Team)
-    MATCH (pr)-[:REVIEWED_BY]->(reviewer:Person)-[:MEMBER_OF]->(reviewer_team:Team)
+    MATCH (pr:PullRequest)-[:CREATED_BY]->(author:Person)-[:MEMBER_OF]-(author_team:Team)
+    MATCH (pr)-[:REVIEWED_BY]->(reviewer:Person)-[:MEMBER_OF]-(reviewer_team:Team)
     WHERE author_team <> reviewer_team
     RETURN author_team.name as author_team,
            reviewer_team.name as reviewer_team,
