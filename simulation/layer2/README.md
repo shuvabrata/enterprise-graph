@@ -60,6 +60,7 @@ class Initiative:
     start_date: str
     due_date: str
     created_at: str
+    _last_synced_at: str
     # Note: assignee_id and reporter_id are extracted for relationships, not stored
 ```
 

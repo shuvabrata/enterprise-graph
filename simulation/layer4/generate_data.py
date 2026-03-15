@@ -11,6 +11,8 @@ from typing import List, Dict, Any, Tuple
 # Seed for reproducibility
 random.seed(42)
 
+# Fixed sync timestamp for deterministic simulation metadata
+SIMULATION_SYNCED_AT = "2026-01-15T12:00:00+00:00"
 # Sprint definitions (4 sprints, 2 weeks each, covering last 2 months)
 SPRINTS = [
     {
@@ -182,7 +184,8 @@ def generate_story_for_epic(epic: Dict, epic_index: int, story_num: int,
         "epic_id": epic['id'],
         "assignee_id": assignee['id'],
         "reporter_id": reporter['id'],
-        "url": f"https://yoursite.atlassian.net/browse/{story_key}"
+        "url": f"https://yoursite.atlassian.net/browse/{story_key}",
+        "_last_synced_at": SIMULATION_SYNCED_AT
     }
     
     return story
@@ -243,7 +246,8 @@ def generate_bugs(stories: List[Dict], people: List[Dict]) -> List[Dict[str, Any
             "assignee_id": story['assignee_id'],  # Same assignee as story
             "reporter_id": story['reporter_id'],
             "related_story_id": story['id'],  # Link to story
-            "url": f"https://yoursite.atlassian.net/browse/{bug_key}"
+            "url": f"https://yoursite.atlassian.net/browse/{bug_key}",
+            "_last_synced_at": SIMULATION_SYNCED_AT
         }
         bugs.append(bug)
     
@@ -275,7 +279,8 @@ def generate_bugs(stories: List[Dict], people: List[Dict]) -> List[Dict[str, Any
             "epic_id": epic,
             "assignee_id": assignee['id'],
             "reporter_id": reporter['id'],
-            "url": f"https://yoursite.atlassian.net/browse/{bug_key}"
+            "url": f"https://yoursite.atlassian.net/browse/{bug_key}",
+            "_last_synced_at": SIMULATION_SYNCED_AT
         }
         bugs.append(bug)
     
@@ -321,7 +326,8 @@ def generate_tasks(epics: List[Dict], people: List[Dict]) -> List[Dict[str, Any]
             "epic_id": epic['id'],
             "assignee_id": assignee['id'],
             "reporter_id": reporter['id'],
-            "url": f"https://yoursite.atlassian.net/browse/{task_key}"
+            "url": f"https://yoursite.atlassian.net/browse/{task_key}",
+            "_last_synced_at": SIMULATION_SYNCED_AT
         }
         tasks.append(task)
     

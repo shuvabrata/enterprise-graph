@@ -11,6 +11,8 @@ from typing import List, Dict, Any
 # Seed for reproducibility
 random.seed(42)
 
+# Fixed sync timestamp for deterministic simulation metadata
+SIMULATION_SYNCED_AT = "2026-01-15T12:00:00+00:00"
 # Initiative definitions
 INITIATIVES = [
     {
@@ -131,7 +133,8 @@ def generate_initiatives(assignees: List[Dict[str, Any]],
             "updated": quarter_to_date(2026, init_def['start_quarter'], True),
             "duedate": quarter_to_date(2026, init_def['end_quarter'], False),
             "assignee_id": assignee['id'],
-            "reporter_id": reporter['id']
+            "reporter_id": reporter['id'],
+            "_last_synced_at": SIMULATION_SYNCED_AT
         }
         initiatives.append(initiative)
     

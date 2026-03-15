@@ -11,6 +11,8 @@ from typing import List, Dict, Any
 # Seed for reproducibility
 random.seed(42)
 
+# Fixed sync timestamp for deterministic simulation metadata
+SIMULATION_SYNCED_AT = "2026-01-15T12:00:00+00:00"
 # Epic definitions aligned with initiatives
 EPICS = {
     "initiative_init_1": [  # Platform Modernization
@@ -213,7 +215,8 @@ def generate_epics(initiatives: List[Dict[str, Any]],
                 "initiative_id": initiative['id'],
                 "assignee_id": owner['id'],
                 "team_id": team_id,
-                "url": f"https://yoursite.atlassian.net/browse/{epic_def['key']}"
+                "url": f"https://yoursite.atlassian.net/browse/{epic_def['key']}",
+                "_last_synced_at": SIMULATION_SYNCED_AT
             }
             all_epics.append(epic)
     
