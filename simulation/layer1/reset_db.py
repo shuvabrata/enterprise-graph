@@ -14,7 +14,13 @@ def clear_database(uri: str, user: str, password: str):
     try:
         with driver.session() as session:
             print("⚠️  Clearing database...")
-            session.run("MATCH (n) DETACH DELETE n")
+            session.run("""
+            CALL apoc.periodic.iterate(
+            'MATCH (n) RETURN n',
+            'DETACH DELETE n',
+            {batchSize: 10000}
+            )
+            """)            
             print("   ✓ Database cleared")
     finally:
         driver.close()
