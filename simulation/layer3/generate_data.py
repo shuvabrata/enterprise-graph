@@ -162,7 +162,7 @@ def get_potential_epic_owners(people: List[Dict[str, Any]], team_id: str) -> Lis
 
 def calculate_epic_dates(initiative: Dict[str, Any], epic_index: int, total_epics: int) -> tuple[str, str]:
     """Calculate start and due dates for epic based on initiative timeline."""
-    init_start = datetime.strptime(initiative['created'], "%Y-%m-%d")
+    init_start = datetime.strptime(initiative['created_at'], "%Y-%m-%d")
     init_end = datetime.strptime(initiative['duedate'], "%Y-%m-%d")
     
     total_days = (init_end - init_start).days
