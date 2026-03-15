@@ -113,6 +113,7 @@ ORDER BY e.start_date, e.key
   "start_date": "2026-01-01",
   "due_date": "2026-04-30",
   "created_at": "2025-11-15",
+  "updated_at": "2025-11-15",
   "_last_synced_at": "2026-01-15T12:00:00+00:00"
 }
 ```

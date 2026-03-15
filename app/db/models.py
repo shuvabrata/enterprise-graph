@@ -5,8 +5,22 @@ Provides dataclasses for all layers and utility functions for merging into Neo4j
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict, field
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any
 from neo4j import Session
+
+
+def _has_value(props: Dict[str, Any], key: str) -> bool:
+    """Return True when a property exists and is meaningfully populated."""
+    if key not in props:
+        return False
+    value = props.get(key)
+    if value is None:
+        return False
+    if value == "":
+        return False
+    if value == []:
+        return False
+    return True
 
 
 # ============================================================================
@@ -170,8 +184,8 @@ class JiraIssueBase:
     summary: str
     priority: str
     status: str
-    created: str              # ISO format string (YYYY-MM-DD)
-    updated: str              # ISO format string (YYYY-MM-DD)
+    created_at: str              # ISO format string (YYYY-MM-DD)
+    updated_at: str              # ISO format string (YYYY-MM-DD)
     duedate: Optional[str] = None    # ISO format string (YYYY-MM-DD), can be None
     project_id: Optional[str] = None  # Project ID for PART_OF relationship
     labels: Optional[List[str]] = field(default_factory=list)
@@ -195,8 +209,8 @@ class JiraIssueBase:
         print(f"  Key:        {self.key}")
         print(f"  Priority:   {self.priority}")
         print(f"  Status:     {self.status}")
-        print(f"  Created:    {self.created}")
-        print(f"  Updated:    {self.updated}")
+        print(f"  Created:    {self.created_at}")
+        print(f"  Updated:    {self.updated_at}")
         if self.duedate:
             print(f"  Due Date:   {self.duedate}")
         if self.labels:
@@ -223,8 +237,8 @@ class Initiative(JiraIssueBase):
             summary="Platform Modernization",
             priority="High",
             status="In Progress",
-            created="2025-12-01",
-            updated="2026-01-15",
+            created_at="2025-12-01",
+            updated_at="2026-01-15",
             duedate="2026-06-30",
             project_id="project_eng_2026",
             labels=["platform", "kubernetes"],
@@ -278,6 +292,7 @@ class Epic:
     start_date: str   # ISO format string (YYYY-MM-DD)
     due_date: str     # ISO format string (YYYY-MM-DD)
     created_at: str   # ISO format string (YYYY-MM-DD)
+    updated_at: Optional[str] = None  # ISO format string (YYYY-MM-DD)
     url: Optional[str] = None
     _last_synced_at: Optional[str] = None  # ISO format datetime string - tracks last successful sync
     
@@ -340,6 +355,7 @@ class Issue:
     status: str
     story_points: int
     created_at: str   # ISO format string (YYYY-MM-DD)
+    updated_at: Optional[str] = None  # ISO format string (YYYY-MM-DD)
     url: Optional[str] = None
     _last_synced_at: Optional[str] = None  # ISO format datetime string - tracks last successful sync
     
@@ -888,29 +904,40 @@ def merge_person(session: Session, person: Person, relationships: Optional[List[
     props = person.to_neo4j_properties()
     
     # MERGE the Person node
-    # Build SET clause dynamically for optional fields
-    set_clauses = [
-        "p.name = $name",
-        "p.title = $title",
-        "p.role = $role",
-        "p.seniority = $seniority",
-        "p.is_manager = $is_manager"
-    ]
+    # Build SET clause dynamically for optional fields (additive updates only)
+    set_clauses = []
+    if _has_value(props, 'name'):
+        set_clauses.append("p.name = $name")
+    if _has_value(props, 'title'):
+        set_clauses.append("p.title = $title")
+    if _has_value(props, 'role'):
+        set_clauses.append("p.role = $role")
+    if _has_value(props, 'seniority'):
+        set_clauses.append("p.seniority = $seniority")
+    if _has_value(props, 'is_manager'):
+        set_clauses.append("p.is_manager = $is_manager")
     
     # Email can be NULL (for users without email) - UNIQUE constraint allows multiple NULLs
-    set_clauses.append("p.email = $email")
+    if _has_value(props, 'email'):
+        set_clauses.append("p.email = $email")
     
     # Only set hire_date if not empty
-    if props.get('hire_date'):
+    if _has_value(props, 'hire_date'):
         set_clauses.append("p.hire_date = date($hire_date)")
-    if 'url' in props:
+    if _has_value(props, 'url'):
         set_clauses.append("p.url = $url")
     
-    query = f"""
-    MERGE (p:Person {{id: $id}})
-    SET {', '.join(set_clauses)}
-    RETURN p
-    """
+    if set_clauses:
+        query = f"""
+        MERGE (p:Person {{id: $id}})
+        SET {', '.join(set_clauses)}
+        RETURN p
+        """
+    else:
+        query = """
+        MERGE (p:Person {id: $id})
+        RETURN p
+        """
     
     session.run(query, **props)
     
@@ -935,25 +962,33 @@ def merge_team(session: Session, team: Team, relationships: Optional[List[Relati
     """
     props = team.to_neo4j_properties()
     
-    # Build SET clause dynamically based on available properties
-    set_clauses = [
-        "t.name = $name",
-        "t.target_size = $target_size",
-        "t.source = 'github'"  # Mark as enriched by GitHub (overwrites 'jira_reference' if it was a stub)
-    ]
+    # Build SET clause dynamically based on available properties (additive updates only)
+    set_clauses = []
+    if _has_value(props, 'name'):
+        set_clauses.append("t.name = $name")
+    if _has_value(props, 'target_size'):
+        set_clauses.append("t.target_size = $target_size")
+    # Mark as enriched by GitHub (overwrites 'jira_reference' if it was a stub)
+    set_clauses.append("t.source = 'github'")
     
     # Only set created_at if it's not empty
-    if props.get('created_at'):
+    if _has_value(props, 'created_at'):
         set_clauses.append("t.created_at = date($created_at)")
-    if 'url' in props:
+    if _has_value(props, 'url'):
         set_clauses.append("t.url = $url")
     
     # MERGE the Team node
-    query = f"""
-    MERGE (t:Team {{id: $id}})
-    SET {', '.join(set_clauses)}
-    RETURN t
-    """
+    if set_clauses:
+        query = f"""
+        MERGE (t:Team {{id: $id}})
+        SET {', '.join(set_clauses)}
+        RETURN t
+        """
+    else:
+        query = """
+        MERGE (t:Team {id: $id})
+        RETURN t
+        """
     
     session.run(query, **props)
     
@@ -974,23 +1009,31 @@ def merge_identity_mapping(session: Session, identity: IdentityMapping, relation
     """
     props = identity.to_neo4j_properties()
     
-    # Build SET clause dynamically based on available properties
-    set_clauses = [
-        "i.provider = $provider",
-        "i.username = $username",
-        "i.email = $email"
-    ]
+    # Build SET clause dynamically based on available properties (additive updates only)
+    set_clauses = []
+    if _has_value(props, 'provider'):
+        set_clauses.append("i.provider = $provider")
+    if _has_value(props, 'username'):
+        set_clauses.append("i.username = $username")
+    if _has_value(props, 'email'):
+        set_clauses.append("i.email = $email")
     
     # Only set last_updated_at if provided
-    if props.get('last_updated_at'):
+    if _has_value(props, 'last_updated_at'):
         set_clauses.append("i.last_updated_at = datetime($last_updated_at)")
     
     # MERGE the IdentityMapping node
-    query = f"""
-    MERGE (i:IdentityMapping {{id: $id}})
-    SET {', '.join(set_clauses)}
-    RETURN i
-    """
+    if set_clauses:
+        query = f"""
+        MERGE (i:IdentityMapping {{id: $id}})
+        SET {', '.join(set_clauses)}
+        RETURN i
+        """
+    else:
+        query = """
+        MERGE (i:IdentityMapping {id: $id})
+        RETURN i
+        """
     
     session.run(query, **props)
     
@@ -1015,22 +1058,31 @@ def merge_project(session: Session, project: Project, relationships: Optional[Li
     """
     props = project.to_neo4j_properties()
     
-    # Build SET clause dynamically based on available properties
-    set_clauses = ["p.key = $key", "p.name = $name"]
-    
-    if 'status' in props:
+    # Build SET clause dynamically based on available properties (additive updates only)
+    set_clauses = []
+    if _has_value(props, 'key'):
+        set_clauses.append("p.key = $key")
+    if _has_value(props, 'name'):
+        set_clauses.append("p.name = $name")
+    if _has_value(props, 'status'):
         set_clauses.append("p.status = $status")
-    if 'project_type' in props:
+    if _has_value(props, 'project_type'):
         set_clauses.append("p.project_type = $project_type")
-    if 'url' in props:
+    if _has_value(props, 'url'):
         set_clauses.append("p.url = $url")
     
     # MERGE the Project node
-    query = f"""
-    MERGE (p:Project {{id: $id}})
-    SET {', '.join(set_clauses)}
-    RETURN p
-    """
+    if set_clauses:
+        query = f"""
+        MERGE (p:Project {{id: $id}})
+        SET {', '.join(set_clauses)}
+        RETURN p
+        """
+    else:
+        query = """
+        MERGE (p:Project {id: $id})
+        RETURN p
+        """
     
     session.run(query, **props)
     
@@ -1051,39 +1103,48 @@ def merge_initiative(session: Session, initiative: Initiative, relationships: Op
     """
     props = initiative.to_neo4j_properties()
     
-    # Build SET clause dynamically based on available properties
-    set_clauses = [
-        "i.key = $key",
-        "i.summary = $summary",
-        "i.priority = $priority",
-        "i.status = $status"
-    ]
+    # Build SET clause dynamically based on available properties (additive updates only)
+    set_clauses = []
+    if _has_value(props, 'key'):
+        set_clauses.append("i.key = $key")
+    if _has_value(props, 'summary'):
+        set_clauses.append("i.summary = $summary")
+    if _has_value(props, 'priority'):
+        set_clauses.append("i.priority = $priority")
+    if _has_value(props, 'status'):
+        set_clauses.append("i.status = $status")
     
     # Only set date fields if they are not empty strings
-    if props.get('created'):
-        set_clauses.append("i.created = date($created)")
-    if props.get('updated'):
-        set_clauses.append("i.updated = date($updated)")
-    if props.get('duedate'):
+    if _has_value(props, 'created_at'):
+        set_clauses.append("i.created_at = date($created_at)")
+    if _has_value(props, 'updated_at'):
+        set_clauses.append("i.updated_at = date($updated_at)")
+    if _has_value(props, 'duedate'):
         set_clauses.append("i.duedate = date($duedate)")
-    if 'labels' in props:
+    if _has_value(props, 'labels'):
         set_clauses.append("i.labels = $labels")
-    if 'components' in props:
+    if _has_value(props, 'components'):
         set_clauses.append("i.components = $components")
-    if 'project_id' in props:
+    if _has_value(props, 'project_id'):
         set_clauses.append("i.project_id = $project_id")
-    if 'url' in props:
+    if _has_value(props, 'url'):
         set_clauses.append("i.url = $url")
     # Only set _last_synced_at if provided (for incremental sync tracking)
-    if props.get('_last_synced_at'):
+    if _has_value(props, '_last_synced_at'):
         set_clauses.append("i._last_synced_at = datetime($_last_synced_at)")
     
     # MERGE the Initiative node
-    query = f"""
-    MERGE (i:Initiative {{id: $id}})
-    SET {', '.join(set_clauses)}
-    RETURN i
-    """
+    if set_clauses:
+        query = f"""
+        MERGE (i:Initiative {{id: $id}})
+        SET {', '.join(set_clauses)}
+        RETURN i
+        """
+    else:
+        query = """
+        MERGE (i:Initiative {id: $id})
+        RETURN i
+        """
     
     session.run(query, **props)
     
@@ -1104,33 +1165,44 @@ def merge_epic(session: Session, epic: Epic, relationships: Optional[List[Relati
     """
     props = epic.to_neo4j_properties()
     
-    # Build SET clause dynamically based on available properties
-    set_clauses = [
-        "e.key = $key",
-        "e.summary = $summary",
-        "e.priority = $priority",
-        "e.status = $status"
-    ]
+    # Build SET clause dynamically based on available properties (additive updates only)
+    set_clauses = []
+    if _has_value(props, 'key'):
+        set_clauses.append("e.key = $key")
+    if _has_value(props, 'summary'):
+        set_clauses.append("e.summary = $summary")
+    if _has_value(props, 'priority'):
+        set_clauses.append("e.priority = $priority")
+    if _has_value(props, 'status'):
+        set_clauses.append("e.status = $status")
     
     # Only set date fields if they are not empty strings
-    if props.get('start_date'):
+    if _has_value(props, 'start_date'):
         set_clauses.append("e.start_date = date($start_date)")
-    if props.get('due_date'):
+    if _has_value(props, 'due_date'):
         set_clauses.append("e.due_date = date($due_date)")
-    if props.get('created_at'):
+    if _has_value(props, 'created_at'):
         set_clauses.append("e.created_at = date($created_at)")
-    if 'url' in props:
+    if _has_value(props, 'updated_at'):
+        set_clauses.append("e.updated_at = date($updated_at)")
+    if _has_value(props, 'url'):
         set_clauses.append("e.url = $url")
     # Only set _last_synced_at if provided (for incremental sync tracking)
-    if props.get('_last_synced_at'):
+    if _has_value(props, '_last_synced_at'):
         set_clauses.append("e._last_synced_at = datetime($_last_synced_at)")
     
     # MERGE the Epic node
-    query = f"""
-    MERGE (e:Epic {{id: $id}})
-    SET {', '.join(set_clauses)}
-    RETURN e
-    """
+    if set_clauses:
+        query = f"""
+        MERGE (e:Epic {{id: $id}})
+        SET {', '.join(set_clauses)}
+        RETURN e
+        """
+    else:
+        query = """
+        MERGE (e:Epic {id: $id})
+        RETURN e
+        """
     
     session.run(query, **props)
     
@@ -1155,32 +1227,46 @@ def merge_issue(session: Session, issue: Issue, relationships: Optional[List[Rel
     """
     props = issue.to_neo4j_properties()
     
-    # Build SET clause dynamically based on available properties
-    set_clauses = [
-        "i.key = $key",
-        "i.type = $type",
-        "i.summary = $summary",
-        "i.priority = $priority",
-        "i.status = $status",
-        "i.story_points = $story_points",
-        "i.source = 'jira'"  # Mark as enriched by Jira (overwrites 'github_reference' if it was a stub)
-    ]
+    # Build SET clause dynamically based on available properties (additive updates only)
+    set_clauses = []
+    if _has_value(props, 'key'):
+        set_clauses.append("i.key = $key")
+    if _has_value(props, 'type'):
+        set_clauses.append("i.type = $type")
+    if _has_value(props, 'summary'):
+        set_clauses.append("i.summary = $summary")
+    if _has_value(props, 'priority'):
+        set_clauses.append("i.priority = $priority")
+    if _has_value(props, 'status'):
+        set_clauses.append("i.status = $status")
+    if _has_value(props, 'story_points'):
+        set_clauses.append("i.story_points = $story_points")
+    # Mark as enriched by Jira (overwrites 'github_reference' if it was a stub)
+    set_clauses.append("i.source = 'jira'")
     
-    # Only set created_at if it's not empty
-    if props.get('created_at'):
+    # Only set created_at/updated_at if it's not empty
+    if _has_value(props, 'created_at'):
         set_clauses.append("i.created_at = date($created_at)")
-    if 'url' in props:
+    if _has_value(props, 'updated_at'):
+        set_clauses.append("i.updated_at = date($updated_at)")
+    if _has_value(props, 'url'):
         set_clauses.append("i.url = $url")
     # Only set _last_synced_at if provided (for incremental sync tracking)
-    if props.get('_last_synced_at'):
+    if _has_value(props, '_last_synced_at'):
         set_clauses.append("i._last_synced_at = datetime($_last_synced_at)")
     
     # MERGE the Issue node
-    query = f"""
-    MERGE (i:Issue {{id: $id}})
-    SET {', '.join(set_clauses)}
-    RETURN i
-    """
+    if set_clauses:
+        query = f"""
+        MERGE (i:Issue {{id: $id}})
+        SET {', '.join(set_clauses)}
+        RETURN i
+        """
+    else:
+        query = """
+        MERGE (i:Issue {id: $id})
+        RETURN i
+        """
     
     session.run(query, **props)
     
@@ -1201,27 +1287,35 @@ def merge_sprint(session: Session, sprint: Sprint, relationships: Optional[List[
     """
     props = sprint.to_neo4j_properties()
     
-    # Build SET clause dynamically based on available properties
-    set_clauses = [
-        "s.name = $name",
-        "s.goal = $goal",
-        "s.status = $status"
-    ]
+    # Build SET clause dynamically based on available properties (additive updates only)
+    set_clauses = []
+    if _has_value(props, 'name'):
+        set_clauses.append("s.name = $name")
+    if _has_value(props, 'goal'):
+        set_clauses.append("s.goal = $goal")
+    if _has_value(props, 'status'):
+        set_clauses.append("s.status = $status")
     
     # Only set date fields if they are not empty strings
-    if props.get('start_date'):
+    if _has_value(props, 'start_date'):
         set_clauses.append("s.start_date = date($start_date)")
-    if props.get('end_date'):
+    if _has_value(props, 'end_date'):
         set_clauses.append("s.end_date = date($end_date)")
-    if 'url' in props:
+    if _has_value(props, 'url'):
         set_clauses.append("s.url = $url")
     
     # MERGE the Sprint node
-    query = f"""
-    MERGE (s:Sprint {{id: $id}})
-    SET {', '.join(set_clauses)}
-    RETURN s
-    """
+    if set_clauses:
+        query = f"""
+        MERGE (s:Sprint {{id: $id}})
+        SET {', '.join(set_clauses)}
+        RETURN s
+        """
+    else:
+        query = """
+        MERGE (s:Sprint {id: $id})
+        RETURN s
+        """
     
     session.run(query, **props)
     
@@ -1249,34 +1343,37 @@ def merge_repository(session: Session, repository: Repository, relationships: Op
     """
     props = repository.to_neo4j_properties()
     
-    # Build ON CREATE SET clause for immutable properties
-    create_clauses = [
-        "r.name = $name",
-        "r.full_name = $full_name"
-    ]
-    
-    if props.get('created_at'):
+    # Build ON CREATE SET clause for immutable properties (additive updates only)
+    create_clauses = []
+    if _has_value(props, 'name'):
+        create_clauses.append("r.name = $name")
+    if _has_value(props, 'full_name'):
+        create_clauses.append("r.full_name = $full_name")
+    if _has_value(props, 'created_at'):
         create_clauses.append("r.created_at = date($created_at)")
     
-    # Build SET clause for mutable properties only
-    set_clauses = [
-        "r.url = $url",
-        "r.language = $language",
-        "r.is_private = $is_private",
-        "r.topics = $topics"
-    ]
+    # Build SET clause for mutable properties only (additive updates only)
+    set_clauses = []
+    if _has_value(props, 'url'):
+        set_clauses.append("r.url = $url")
+    if _has_value(props, 'language'):
+        set_clauses.append("r.language = $language")
+    if _has_value(props, 'is_private'):
+        set_clauses.append("r.is_private = $is_private")
+    if _has_value(props, 'topics'):
+        set_clauses.append("r.topics = $topics")
     
     # Only set _last_synced_at if provided (for incremental sync tracking)
-    if props.get('_last_synced_at'):
+    if _has_value(props, '_last_synced_at'):
         set_clauses.append("r._last_synced_at = datetime($_last_synced_at)")
     
     # MERGE the Repository node with separate immutable and mutable properties
-    query = f"""
-    MERGE (r:Repository {{id: $id}})
-    ON CREATE SET {', '.join(create_clauses)}
-    SET {', '.join(set_clauses)}
-    RETURN r
-    """
+    query = "MERGE (r:Repository {id: $id})"
+    if create_clauses:
+        query += f"\nON CREATE SET {', '.join(create_clauses)}"
+    if set_clauses:
+        query += f"\nSET {', '.join(set_clauses)}"
+    query += "\nRETURN r"
     
     session.run(query, **props)
     
@@ -1304,19 +1401,35 @@ def merge_branch(session: Session, branch: Branch, relationships: Optional[List[
     """
     props = branch.to_neo4j_properties()
     
+    # Build ON CREATE SET clause for immutable properties (additive updates only)
+    create_clauses = []
+    if _has_value(props, 'name'):
+        create_clauses.append("b.name = $name")
+    if _has_value(props, 'is_default'):
+        create_clauses.append("b.is_default = $is_default")
+    if _has_value(props, 'is_protected'):
+        create_clauses.append("b.is_protected = $is_protected")
+    if _has_value(props, 'is_external'):
+        create_clauses.append("b.is_external = $is_external")
+    
+    # Build SET clause for mutable properties only (additive updates only)
+    set_clauses = []
+    if _has_value(props, 'last_commit_sha'):
+        set_clauses.append("b.last_commit_sha = $last_commit_sha")
+    if _has_value(props, 'last_commit_timestamp'):
+        set_clauses.append("b.last_commit_timestamp = datetime($last_commit_timestamp)")
+    if _has_value(props, 'is_deleted'):
+        set_clauses.append("b.is_deleted = $is_deleted")
+    if _has_value(props, 'url'):
+        set_clauses.append("b.url = $url")
+    
     # MERGE the Branch node with separate immutable and mutable properties
-    query = """
-    MERGE (b:Branch {id: $id})
-    ON CREATE SET b.name = $name,
-                  b.is_default = $is_default,
-                  b.is_protected = $is_protected,
-                  b.is_external = $is_external
-    SET b.last_commit_sha = $last_commit_sha,
-        b.last_commit_timestamp = datetime($last_commit_timestamp),
-        b.is_deleted = $is_deleted,
-        b.url = $url
-    RETURN b
-    """
+    query = "MERGE (b:Branch {id: $id})"
+    if create_clauses:
+        query += f"\nON CREATE SET {', '.join(create_clauses)}"
+    if set_clauses:
+        query += f"\nSET {', '.join(set_clauses)}"
+    query += "\nRETURN b"
     
     session.run(query, **props)
     
@@ -1341,17 +1454,22 @@ def merge_commit(session: Session, commit: Commit, relationships: Optional[List[
     """
     props = commit.to_neo4j_properties()
     
-    # Build SET clause dynamically based on available properties
-    set_clauses = [
-        "c.sha = $sha",
-        "c.message = $message",
-        "c.timestamp = datetime($timestamp)",
-        "c.additions = $additions",
-        "c.deletions = $deletions",
-        "c.files_changed = $files_changed"
-    ]
+    # Build SET clause dynamically based on available properties (additive updates only)
+    set_clauses = []
+    if _has_value(props, 'sha'):
+        set_clauses.append("c.sha = $sha")
+    if _has_value(props, 'message'):
+        set_clauses.append("c.message = $message")
+    if _has_value(props, 'timestamp'):
+        set_clauses.append("c.timestamp = datetime($timestamp)")
+    if _has_value(props, 'additions'):
+        set_clauses.append("c.additions = $additions")
+    if _has_value(props, 'deletions'):
+        set_clauses.append("c.deletions = $deletions")
+    if _has_value(props, 'files_changed'):
+        set_clauses.append("c.files_changed = $files_changed")
     
-    if props.get('url'):
+    if _has_value(props, 'url'):
         set_clauses.append("c.url = $url")
     
     # Set fully_synced flag if provided (for incremental sync optimization)
@@ -1359,11 +1477,17 @@ def merge_commit(session: Session, commit: Commit, relationships: Optional[List[
         set_clauses.append("c.fully_synced = $fully_synced")
     
     # MERGE the Commit node
-    query = f"""
-    MERGE (c:Commit {{id: $id}})
-    SET {', '.join(set_clauses)}
-    RETURN c
-    """
+    if set_clauses:
+        query = f"""
+        MERGE (c:Commit {{id: $id}})
+        SET {', '.join(set_clauses)}
+        RETURN c
+        """
+    else:
+        query = """
+        MERGE (c:Commit {id: $id})
+        RETURN c
+        """
     
     session.run(query, **props)
     
@@ -1384,19 +1508,37 @@ def merge_file(session: Session, file: File, relationships: Optional[List[Relati
     """
     props = file.to_neo4j_properties()
     
+    # Build SET clause dynamically based on available properties (additive updates only)
+    set_clauses = []
+    if _has_value(props, 'path'):
+        set_clauses.append("f.path = $path")
+    if _has_value(props, 'name'):
+        set_clauses.append("f.name = $name")
+    if _has_value(props, 'extension'):
+        set_clauses.append("f.extension = $extension")
+    if _has_value(props, 'language'):
+        set_clauses.append("f.language = $language")
+    if _has_value(props, 'is_test'):
+        set_clauses.append("f.is_test = $is_test")
+    if _has_value(props, 'size'):
+        set_clauses.append("f.size = $size")
+    if _has_value(props, 'created_at'):
+        set_clauses.append("f.created_at = datetime($created_at)")
+    if _has_value(props, 'url'):
+        set_clauses.append("f.url = $url")
+    
     # MERGE the File node
-    query = """
-    MERGE (f:File {id: $id})
-    SET f.path = $path,
-        f.name = $name,
-        f.extension = $extension,
-        f.language = $language,
-        f.is_test = $is_test,
-        f.size = $size,
-        f.created_at = datetime($created_at),
-        f.url = $url
-    RETURN f
-    """
+    if set_clauses:
+        query = f"""
+        MERGE (f:File {{id: $id}})
+        SET {', '.join(set_clauses)}
+        RETURN f
+        """
+    else:
+        query = """
+        MERGE (f:File {id: $id})
+        RETURN f
+        """
     
     session.run(query, **props)
     
@@ -1424,30 +1566,55 @@ def merge_pull_request(session: Session, pull_request: PullRequest, relationship
     """
     props = pull_request.to_neo4j_properties()
     
+    # Build ON CREATE SET clause for immutable properties (additive updates only)
+    create_clauses = []
+    if _has_value(props, 'number'):
+        create_clauses.append("pr.number = $number")
+    if _has_value(props, 'created_at'):
+        create_clauses.append("pr.created_at = datetime($created_at)")
+    
+    # Build SET clause for mutable properties only (additive updates only)
+    set_clauses = []
+    if _has_value(props, 'title'):
+        set_clauses.append("pr.title = $title")
+    if _has_value(props, 'state'):
+        set_clauses.append("pr.state = $state")
+    if _has_value(props, 'updated_at'):
+        set_clauses.append("pr.updated_at = datetime($updated_at)")
+    if _has_value(props, 'merged_at'):
+        set_clauses.append("pr.merged_at = datetime($merged_at)")
+    if _has_value(props, 'closed_at'):
+        set_clauses.append("pr.closed_at = datetime($closed_at)")
+    if _has_value(props, 'commits_count'):
+        set_clauses.append("pr.commits_count = $commits_count")
+    if _has_value(props, 'additions'):
+        set_clauses.append("pr.additions = $additions")
+    if _has_value(props, 'deletions'):
+        set_clauses.append("pr.deletions = $deletions")
+    if _has_value(props, 'changed_files'):
+        set_clauses.append("pr.changed_files = $changed_files")
+    if _has_value(props, 'comments'):
+        set_clauses.append("pr.comments = $comments")
+    if _has_value(props, 'review_comments'):
+        set_clauses.append("pr.review_comments = $review_comments")
+    if _has_value(props, 'head_branch_name'):
+        set_clauses.append("pr.head_branch_name = $head_branch_name")
+    if _has_value(props, 'base_branch_name'):
+        set_clauses.append("pr.base_branch_name = $base_branch_name")
+    if _has_value(props, 'labels'):
+        set_clauses.append("pr.labels = $labels")
+    if _has_value(props, 'mergeable_state'):
+        set_clauses.append("pr.mergeable_state = $mergeable_state")
+    if _has_value(props, 'url'):
+        set_clauses.append("pr.url = $url")
+    
     # MERGE the PullRequest node with separate immutable and mutable properties
-    # Handle nullable datetime fields
-    query = """
-    MERGE (pr:PullRequest {id: $id})
-    ON CREATE SET pr.number = $number,
-                  pr.created_at = datetime($created_at)
-    SET pr.title = $title,
-        pr.state = $state,
-        pr.updated_at = datetime($updated_at),
-        pr.merged_at = CASE WHEN $merged_at IS NOT NULL THEN datetime($merged_at) ELSE null END,
-        pr.closed_at = CASE WHEN $closed_at IS NOT NULL THEN datetime($closed_at) ELSE null END,
-        pr.commits_count = $commits_count,
-        pr.additions = $additions,
-        pr.deletions = $deletions,
-        pr.changed_files = $changed_files,
-        pr.comments = $comments,
-        pr.review_comments = $review_comments,
-        pr.head_branch_name = $head_branch_name,
-        pr.base_branch_name = $base_branch_name,
-        pr.labels = $labels,
-        pr.mergeable_state = $mergeable_state,
-        pr.url = $url
-    RETURN pr
-    """
+    query = "MERGE (pr:PullRequest {id: $id})"
+    if create_clauses:
+        query += f"\nON CREATE SET {', '.join(create_clauses)}"
+    if set_clauses:
+        query += f"\nSET {', '.join(set_clauses)}"
+    query += "\nRETURN pr"
     
     session.run(query, **props)
     

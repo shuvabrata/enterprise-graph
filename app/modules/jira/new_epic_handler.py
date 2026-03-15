@@ -67,15 +67,16 @@ def new_epic_handler(
         due_date_field_name = os.getenv('JIRA_EPIC_DUE_DATE_FIELD', 'duedate')
         
         # Extract dates
-        created = fields.get('created', '')[:10] if fields.get('created') else ''  # Extract date part YYYY-MM-DD
+        created_at = fields.get('created', '')[:10] if fields.get('created') else ''  # Extract date part YYYY-MM-DD
+        updated_at = fields.get('updated', '')[:10] if fields.get('updated') else ''  # Extract date part YYYY-MM-DD
         
         # Start date - use configured field or fall back to created date
         start_date = None
         if start_date_field_name == 'created':
-            start_date = created
+            start_date = created_at
         else:
             custom_start = fields.get(start_date_field_name)
-            start_date = custom_start[:10] if custom_start else created
+            start_date = custom_start[:10] if custom_start else created_at
         
         # Due date - use configured field
         due_date = fields.get(due_date_field_name)
@@ -116,9 +117,10 @@ def new_epic_handler(
             summary=summary,
             priority=priority,
             status=status,
-            start_date=start_date or created,  # Fallback to created if no start_date
+            start_date=start_date or created_at,  # Fallback to created if no start_date
             due_date=due_date if due_date else '',  # Empty string if no due date
-            created_at=created,
+            created_at=created_at,
+            updated_at=updated_at,
             url=url,
             _last_synced_at=_last_synced_at
         )

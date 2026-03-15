@@ -52,8 +52,8 @@ def new_initiative_handler(
         priority = priority_obj.get('name', 'None') if priority_obj else 'None'
         status_obj = fields.get('status', {})
         status = status_obj.get('name', 'Unknown') if status_obj else 'Unknown'
-        created = fields.get('created', '')[:10] if fields.get('created') else ''  # Extract date part YYYY-MM-DD
-        updated = fields.get('updated', '')[:10] if fields.get('updated') else ''  # Extract date part YYYY-MM-DD
+        created_at = fields.get('created', '')[:10] if fields.get('created') else ''  # Extract date part YYYY-MM-DD
+        updated_at = fields.get('updated', '')[:10] if fields.get('updated') else ''  # Extract date part YYYY-MM-DD
         
         # Extract optional fields
         duedate = fields.get('duedate')  # Already in YYYY-MM-DD format if present
@@ -85,8 +85,8 @@ def new_initiative_handler(
             summary=summary,
             priority=priority,
             status=status,
-            created=created,
-            updated=updated,
+            created_at=created_at,
+            updated_at=updated_at,
             duedate=duedate,
             project_id=project_id,
             labels=labels if labels else None,

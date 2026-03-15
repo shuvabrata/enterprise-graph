@@ -57,9 +57,9 @@ class Initiative:
     description: str
     priority: str
     status: str
-    start_date: str
-    due_date: str
     created_at: str
+    updated_at: str
+    duedate: str
     _last_synced_at: str
     # Note: assignee_id and reporter_id are extracted for relationships, not stored
 ```

@@ -181,6 +181,7 @@ def generate_story_for_epic(epic: Dict, epic_index: int, story_num: int,
         "status": weighted_choice(STATUS_DISTRIBUTION),
         "story_points": random.choice(STORY_POINTS),
         "created_at": created_at.strftime("%Y-%m-%d"),
+        "updated_at": created_at.strftime("%Y-%m-%d"),
         "epic_id": epic['id'],
         "assignee_id": assignee['id'],
         "reporter_id": reporter['id'],
@@ -231,6 +232,8 @@ def generate_bugs(stories: List[Dict], people: List[Dict]) -> List[Dict[str, Any
     for idx, story in enumerate(story_bugs, start=1):
         epic_prefix = story['key'].split('-')[0]
         bug_key = f"BUG-{idx}"
+        created_at_str = (datetime.strptime(story['created_at'], "%Y-%m-%d") +
+                          timedelta(days=random.randint(10, 30))).strftime("%Y-%m-%d")
         
         bug = {
             "id": f"issue_{bug_key.lower().replace('-', '_')}",
@@ -240,8 +243,8 @@ def generate_bugs(stories: List[Dict], people: List[Dict]) -> List[Dict[str, Any
             "priority": random.choice(["Critical", "High", "High", "Medium"]),
             "status": weighted_choice({"To Do": 0.3, "In Progress": 0.4, "Done": 0.3}),
             "story_points": random.choice([1, 2, 3]),
-            "created_at": (datetime.strptime(story['created_at'], "%Y-%m-%d") + 
-                          timedelta(days=random.randint(10, 30))).strftime("%Y-%m-%d"),
+            "created_at": created_at_str,
+            "updated_at": created_at_str,
             "epic_id": story['epic_id'],
             "assignee_id": story['assignee_id'],  # Same assignee as story
             "reporter_id": story['reporter_id'],
@@ -267,6 +270,7 @@ def generate_bugs(stories: List[Dict], people: List[Dict]) -> List[Dict[str, Any
         # Random epic for context
         epic = random.choice([s['epic_id'] for s in stories])
         
+        created_at_str = (datetime.now() - timedelta(days=random.randint(5, 60))).strftime("%Y-%m-%d")
         bug = {
             "id": f"issue_{bug_key.lower().replace('-', '_')}",
             "key": bug_key,
@@ -275,7 +279,8 @@ def generate_bugs(stories: List[Dict], people: List[Dict]) -> List[Dict[str, Any
             "priority": weighted_choice(PRIORITY_DISTRIBUTION),
             "status": weighted_choice({"To Do": 0.2, "In Progress": 0.3, "Done": 0.4, "Blocked": 0.1}),
             "story_points": random.choice([1, 2, 3, 5]),
-            "created_at": (datetime.now() - timedelta(days=random.randint(5, 60))).strftime("%Y-%m-%d"),
+            "created_at": created_at_str,
+            "updated_at": created_at_str,
             "epic_id": epic,
             "assignee_id": assignee['id'],
             "reporter_id": reporter['id'],
@@ -314,6 +319,7 @@ def generate_tasks(epics: List[Dict], people: List[Dict]) -> List[Dict[str, Any]
         
         epic = random.choice(epics)
         
+        created_at_str = (datetime.now() - timedelta(days=random.randint(10, 45))).strftime("%Y-%m-%d")
         task = {
             "id": f"issue_{task_key.lower().replace('-', '_')}",
             "key": task_key,
@@ -322,7 +328,8 @@ def generate_tasks(epics: List[Dict], people: List[Dict]) -> List[Dict[str, Any]
             "priority": random.choice(["Medium", "Low", "Low"]),
             "status": weighted_choice(STATUS_DISTRIBUTION),
             "story_points": random.choice([2, 3, 5, 8]),
-            "created_at": (datetime.now() - timedelta(days=random.randint(10, 45))).strftime("%Y-%m-%d"),
+            "created_at": created_at_str,
+            "updated_at": created_at_str,
             "epic_id": epic['id'],
             "assignee_id": assignee['id'],
             "reporter_id": reporter['id'],

@@ -132,6 +132,7 @@ RETURN i.key, i.summary,
   "status": "Done",
   "story_points": 5,
   "created_at": "2025-12-15",
+  "updated_at": "2025-12-15",
   "_last_synced_at": "2026-01-15T12:00:00+00:00"
 }
 ```
