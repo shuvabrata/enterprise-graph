@@ -14,7 +14,7 @@ Created `generate_data.py` that generates:
 ### 2. Neo4j Loader Script
 Created `load_to_neo4j.py` that:
 - Creates Branch nodes with uniqueness constraints
-- Creates BRANCH_OF relationships to repositories
+- Creates BRANCH_OF relationships to repositories (undirected)
 - Runs comprehensive validation queries
 
 ### 3. Documentation
@@ -97,7 +97,7 @@ data/
 
 ```cypher
 // Active feature branches by repo
-MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
 WHERE NOT b.is_default AND NOT b.is_deleted
 RETURN r.name, count(b) as active_branches
 ORDER BY active_branches DESC
@@ -109,12 +109,12 @@ WHERE b.last_commit_timestamp < datetime() - duration({days: 30})
 RETURN b.name, duration.between(b.last_commit_timestamp, datetime()).days as days_old
 
 // Branches linked to specific epic
-MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
 WHERE b.name CONTAINS 'PLAT-1'
 RETURN r.name, b.name, b.is_deleted
 
 // Protected branch audit
-MATCH (b:Branch {is_protected: true})-[:BRANCH_OF]->(r:Repository)
+MATCH (b:Branch {is_protected: true})-[:BRANCH_OF]-(r:Repository)
 RETURN r.name, collect(b.name) as protected_branches
 ```
 

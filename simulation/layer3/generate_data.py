@@ -160,8 +160,8 @@ def get_potential_epic_owners(people: List[Dict[str, Any]], team_id: str) -> Lis
 
 def calculate_epic_dates(initiative: Dict[str, Any], epic_index: int, total_epics: int) -> tuple[str, str]:
     """Calculate start and due dates for epic based on initiative timeline."""
-    init_start = datetime.strptime(initiative['start_date'], "%Y-%m-%d")
-    init_end = datetime.strptime(initiative['due_date'], "%Y-%m-%d")
+    init_start = datetime.strptime(initiative['created'], "%Y-%m-%d")
+    init_end = datetime.strptime(initiative['duedate'], "%Y-%m-%d")
     
     total_days = (init_end - init_start).days
     epic_duration = total_days // total_epics
@@ -205,7 +205,6 @@ def generate_epics(initiatives: List[Dict[str, Any]],
                 "id": f"epic_{epic_def['key'].lower().replace('-', '_')}",
                 "key": epic_def['key'],
                 "summary": epic_def['summary'],
-                "description": epic_def['description'],
                 "priority": epic_def['priority'],
                 "status": epic_def['status'],
                 "start_date": start_date,
@@ -236,7 +235,7 @@ def create_part_of_relationships(epics: List[Dict[str, Any]]) -> List[Dict[str, 
     return relationships
 
 def create_assigned_to_relationships(epics: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Create ASSIGNED_TO relationships: Epic → Person."""
+    """Create ASSIGNED_TO relationships: Epic ↔ Person (undirected)."""
     relationships = []
     
     for epic in epics:
@@ -251,7 +250,7 @@ def create_assigned_to_relationships(epics: List[Dict[str, Any]]) -> List[Dict[s
     return relationships
 
 def create_team_relationships(epics: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Create TEAM relationships: Epic → Team."""
+    """Create TEAM relationships: Epic ↔ Team (undirected)."""
     relationships = []
     
     for epic in epics:

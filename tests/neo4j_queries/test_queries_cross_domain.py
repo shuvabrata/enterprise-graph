@@ -12,8 +12,8 @@ def test_developer_impact_analysis(query_executor, expectations, track_result):
     query = """
     MATCH (p:Person)
     OPTIONAL MATCH (p)<-[:CREATED_BY]-(pr:PullRequest)
-    OPTIONAL MATCH (p)<-[:AUTHORED_BY]-(c:Commit)
-    OPTIONAL MATCH (p)<-[:ASSIGNED_TO]-(i:Issue)
+    OPTIONAL MATCH (p)-[:AUTHORED_BY]-(c:Commit)
+    OPTIONAL MATCH (p)-[:ASSIGNED_TO]-(i:Issue)
     RETURN p.name as developer,
            p.title,
            count(DISTINCT pr) as prs,
@@ -37,9 +37,9 @@ def test_developer_impact_analysis(query_executor, expectations, track_result):
 def test_team_workload_overview(query_executor, expectations, track_result):
     """Team workload across GitHub and Jira."""
     query = """
-    MATCH (t:Team)<-[:MEMBER_OF]-(p:Person)
-    OPTIONAL MATCH (p)<-[:ASSIGNED_TO]-(i:Issue)
-    OPTIONAL MATCH (p)<-[:AUTHORED_BY]-(c:Commit)
+    MATCH (t:Team)-[:MEMBER_OF]-(p:Person)
+    OPTIONAL MATCH (p)-[:ASSIGNED_TO]-(i:Issue)
+    OPTIONAL MATCH (p)-[:AUTHORED_BY]-(c:Commit)
     RETURN t.name as team,
            count(DISTINCT p) as members,
            count(DISTINCT i) as assigned_issues,
@@ -62,7 +62,7 @@ def test_epic_to_repository_traceability(query_executor, expectations, track_res
     """Map epics to repositories via commits."""
     query = """
     MATCH (e:Epic)<-[:PART_OF]-(i:Issue)<-[:REFERENCES]-(c:Commit)
-    MATCH (c)-[:PART_OF]->(b:Branch)-[:BRANCH_OF]->(r:Repository)
+    MATCH (c)-[:PART_OF]->(b:Branch)-[:BRANCH_OF]-(r:Repository)
     RETURN e.key as epic, e.summary,
            collect(DISTINCT r.name) as repositories,
            count(DISTINCT c) as commits

@@ -101,19 +101,19 @@ data/
 
 ```cypher
 // All teams and their repositories (WRITE access)
-MATCH (t:Team)-[c:COLLABORATOR {permission:'WRITE'}]->(r:Repository)
+MATCH (t:Team)-[c:COLLABORATOR {permission:'WRITE'}]-(r:Repository)
 RETURN t.name, collect(r.name) as repos
 
 // Find maintainers for a specific repo
-MATCH (p:Person)-[c:COLLABORATOR {permission:'WRITE'}]->(r:Repository {name: 'gateway'})
+MATCH (p:Person)-[c:COLLABORATOR {permission:'WRITE'}]-(r:Repository {name: 'gateway'})
 RETURN p.name, p.title
 
 // Cross-team dependencies (READ access)
-MATCH (t:Team)-[c:COLLABORATOR {permission:'READ'}]->(r:Repository)
+MATCH (t:Team)-[c:COLLABORATOR {permission:'READ'}]-(r:Repository)
 RETURN r.name, collect(t.name) as dependent_teams
 
 // People working across multiple repos
-MATCH (p:Person)-[c:COLLABORATOR {permission:'WRITE'}]->(r:Repository)
+MATCH (p:Person)-[c:COLLABORATOR {permission:'WRITE'}]-(r:Repository)
 WITH p, collect(r.name) as repos
 WHERE size(repos) > 1
 RETURN p.name, repos

@@ -60,13 +60,13 @@ Technical leaders today lack visibility into:
 ```cypher
 // Find critical projects with junior talent assigned
 MATCH (proj:Project)-[:HAS_EPIC]->(epic:Epic)-[:HAS_ISSUE]->(issue:Issue)
-MATCH (issue)-[:ASSIGNED_TO]->(person:Person)
+MATCH (issue)-[:ASSIGNED_TO]-(person:Person)
 WHERE proj.priority = 'Critical' AND person.seniority = 'Junior'
 RETURN proj, count(issue) as junior_assigned_count
 
 // Identify code hotspots: high churn + many authors + bug fixes
 MATCH (file:File)-[:HAS_COMMIT]->(commit:Commit)
-MATCH (commit)-[:AUTHORED_BY]->(author:Person)
+MATCH (commit)-[:AUTHORED_BY]-(author:Person)
 MATCH (commit)-[:REFERENCES]->(issue:Issue {type: 'Bug'})
 WHERE commit.timestamp > date('2025-10-01')
 RETURN file.path, 
@@ -97,7 +97,7 @@ Relationships:
 See class definition: [Branch](../db/models.py#L425)
 
 Relationships:
-  - BRANCH_OF → Repository
+  - BRANCH_OF ↔ Repository (undirected)
   - HAS_COMMIT → Commit
   - MERGED_TO → Branch
 
@@ -105,7 +105,7 @@ Relationships:
 See class definition: [Commit](../db/models.py#L482)
 
 Relationships:
-  - AUTHORED_BY → Person
+  - AUTHORED_BY ↔ Person (undirected)
   - COMMITTED_BY → Person (can differ from author)
   - PARENT → Commit (for commit history)
   - MODIFIES → File
@@ -154,22 +154,22 @@ Relationships:
   - HAS_ISSUE → Story/Task/Bug
   - BLOCKS → Epic
   - DEPENDS_ON → Epic
-  - RELATES_TO → Repository/Service
+  - RELATES_TO ↔ Repository/Service (undirected)
 
 **Issue** (Story, Task, Bug, Subtask)
 See class definition: [Issue](../db/models.py#L268)
 
 Relationships:
-  - ASSIGNED_TO → Person
-  - REPORTED_BY → Person
+  - ASSIGNED_TO ↔ Person (undirected)
+  - REPORTED_BY ↔ Person (undirected)
   - PART_OF → Epic
   - IN_SPRINT → Sprint
   - BLOCKS → Issue
   - DEPENDS_ON → Issue
-  - RELATES_TO → Issue
+  - RELATES_TO ↔ Issue (undirected)
   - PARENT_OF → Issue (for subtasks)
   - FIXED_IN → Commit/PullRequest
-  - RELATES_TO → Repository/Service/File
+  - RELATES_TO ↔ Repository/Service/File (undirected)
   - COMMENTED_BY → Person (with timestamp)
   - TRANSITIONED_BY → Person (status changes, with timestamp)
 
@@ -179,7 +179,7 @@ See class definition: [Sprint](../db/models.py#L327)
 Relationships:
   - PART_OF → Board
   - HAS_ISSUE → Issue
-  - ASSIGNED_TO → Team
+  - ASSIGNED_TO ↔ Team (undirected)
 
 **Project** (Jira Project)
 See class definition: [Project](../db/models.py#L127)
@@ -188,7 +188,7 @@ Relationships:
   - OWNED_BY → Team/Person
   - HAS_EPIC → Epic
   - HAS_BOARD → Board
-  - RELATES_TO → Repository (many-to-many)
+  - RELATES_TO ↔ Repository (undirected, many-to-many)
 
 **Board**
 TODO: Create class definition in [db/models.py](../db/models.py)
@@ -204,13 +204,13 @@ Relationships:
 See class definition: [Person](../db/models.py#L16)
 
 Relationships:
-  - MEMBER_OF → Team
+  - MEMBER_OF ↔ Team (undirected)
   - REPORTS_TO → Person (manager)
   - MANAGES → Team/Person
   - AUTHORED → Commit
   - CREATED → PullRequest/Issue
   - REVIEWED → PullRequest
-  - ASSIGNED_TO → Issue
+  - ASSIGNED_TO ↔ Issue (undirected)
   - OWNS → Repository/Service
   - PARTICIPATED_IN → Meeting
   - CONTRIBUTED_TO → Document (Confluence)
@@ -220,7 +220,7 @@ Relationships:
 See class definition: [IdentityMapping](../db/models.py#L73)
 
 Relationships:
-  - MAPS_TO → Person (master identity)
+  - MAPS_TO ↔ Person (undirected, master identity)
   - VERIFIED_BY → Person (admin who verified)
 
 **Team**
@@ -257,7 +257,7 @@ Relationships:
   - CREATED_BY → Person
   - LAST_MODIFIED_BY → Person
   - PARENT_PAGE → Page
-  - RELATES_TO → Project/Repository/Service
+  - RELATES_TO ↔ Project/Repository/Service (undirected)
   - REFERENCES → Issue
 
 #### 3.1.5 Infrastructure & Deployments (AWS/Azure) - Future Phase
@@ -381,7 +381,7 @@ IdentityMapping Node:
     - verified_by: string (admin user)
   
   Relationships:
-    - MAPS_TO → Person (master identity)
+    - MAPS_TO ↔ Person (undirected, master identity)
 ```
 
 **Workflow**:
@@ -554,10 +554,10 @@ Grand Total Nodes: ~393,640
 Estimated: 5-10× node count = 2-4 million edges
 
 Key relationships:
-  - Commit → Person (AUTHORED_BY): 250K
+  - Commit ↔ Person (AUTHORED_BY, undirected): 250K
   - Commit → File (MODIFIES): 1M (4 files per commit avg)
-  - Issue → Person (ASSIGNED_TO): 50K
-  - Person → Team (MEMBER_OF): 500
+  - Issue ↔ Person (ASSIGNED_TO, undirected): 50K
+  - Person ↔ Team (MEMBER_OF, undirected): 500
   - Issue → Commit (FIXED_IN): 100K
   - PullRequest → Commit (HAS_COMMIT): 150K
   - ... and many more

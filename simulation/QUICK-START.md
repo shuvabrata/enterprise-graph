@@ -173,7 +173,7 @@ MATCH (n) RETURN labels(n)[0] as type, count(*) as count
 ORDER BY count DESC
 
 // View org structure
-MATCH (p:Person)-[:MEMBER_OF]->(t:Team)
+MATCH (p:Person)-[:MEMBER_OF]-(t:Team)
 RETURN t.name, count(p) as team_size
 ORDER BY team_size DESC
 
@@ -183,11 +183,11 @@ RETURN i.key, i.summary, count(e) as epics
 ORDER BY epics DESC
 
 // View repository ownership
-MATCH (t:Team)-[c:COLLABORATOR {permission:'WRITE'}]->(r:Repository)
+MATCH (t:Team)-[c:COLLABORATOR {permission:'WRITE'}]-(r:Repository)
 RETURN t.name, collect(r.name) as repos
 
 // PR velocity by repository
-MATCH (pr:PullRequest)-[:TARGETS]->(:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (pr:PullRequest)-[:TARGETS]->(:Branch)-[:BRANCH_OF]-(r:Repository)
 RETURN r.name as repo, 
        count(pr) as total_prs,
        sum(CASE WHEN pr.state = 'merged' THEN 1 ELSE 0 END) as merged

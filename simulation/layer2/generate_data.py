@@ -125,12 +125,11 @@ def generate_initiatives(assignees: List[Dict[str, Any]],
             "id": f"initiative_{init_def['key'].lower().replace('-', '_')}",
             "key": init_def['key'],
             "summary": init_def['summary'],
-            "description": init_def['description'],
             "priority": init_def['priority'],
             "status": init_def['status'],
-            "start_date": quarter_to_date(2026, init_def['start_quarter'], True),
-            "due_date": quarter_to_date(2026, init_def['end_quarter'], False),
-            "created_at": "2025-12-01",
+            "created": quarter_to_date(2026, init_def['start_quarter'], True),
+            "updated": quarter_to_date(2026, init_def['start_quarter'], True),
+            "duedate": quarter_to_date(2026, init_def['end_quarter'], False),
             "assignee_id": assignee['id'],
             "reporter_id": reporter['id']
         }
@@ -155,7 +154,7 @@ def create_part_of_relationships(initiatives: List[Dict[str, Any]],
     return relationships
 
 def create_owned_by_relationships(initiatives: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Create ASSIGNED_TO relationships: Initiative → Person."""
+    """Create ASSIGNED_TO relationships: Initiative ↔ Person (undirected)."""
     relationships = []
     
     for initiative in initiatives:

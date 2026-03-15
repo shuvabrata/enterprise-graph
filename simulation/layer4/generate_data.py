@@ -175,7 +175,6 @@ def generate_story_for_epic(epic: Dict, epic_index: int, story_num: int,
         "key": story_key,
         "type": "Story",
         "summary": summary,
-        "description": f"Implement {summary.lower()} as part of {epic['summary']}",
         "priority": weighted_choice(PRIORITY_DISTRIBUTION),
         "status": weighted_choice(STATUS_DISTRIBUTION),
         "story_points": random.choice(STORY_POINTS),
@@ -235,7 +234,6 @@ def generate_bugs(stories: List[Dict], people: List[Dict]) -> List[Dict[str, Any
             "key": bug_key,
             "type": "Bug",
             "summary": f"Bug found in {story['summary']}",
-            "description": f"Issue discovered during testing of {story['key']}",
             "priority": random.choice(["Critical", "High", "High", "Medium"]),
             "status": weighted_choice({"To Do": 0.3, "In Progress": 0.4, "Done": 0.3}),
             "story_points": random.choice([1, 2, 3]),
@@ -270,7 +268,6 @@ def generate_bugs(stories: List[Dict], people: List[Dict]) -> List[Dict[str, Any
             "key": bug_key,
             "type": "Bug",
             "summary": template.format(component),
-            "description": f"Production bug affecting {component}",
             "priority": weighted_choice(PRIORITY_DISTRIBUTION),
             "status": weighted_choice({"To Do": 0.2, "In Progress": 0.3, "Done": 0.4, "Blocked": 0.1}),
             "story_points": random.choice([1, 2, 3, 5]),
@@ -317,7 +314,6 @@ def generate_tasks(epics: List[Dict], people: List[Dict]) -> List[Dict[str, Any]
             "key": task_key,
             "type": "Task",
             "summary": template.format(component),
-            "description": f"Technical task for {component}",
             "priority": random.choice(["Medium", "Low", "Low"]),
             "status": weighted_choice(STATUS_DISTRIBUTION),
             "story_points": random.choice([2, 3, 5, 8]),
@@ -390,7 +386,7 @@ def create_issue_dependencies(issues: List[Dict]) -> List[Dict[str, Any]]:
     return relationships
 
 def create_bug_story_relationships(bugs: List[Dict]) -> List[Dict[str, Any]]:
-    """Create RELATES_TO relationships for bugs linked to stories."""
+    """Create RELATES_TO relationships for bugs linked to stories (undirected)."""
     relationships = []
     
     for bug in bugs:
@@ -421,7 +417,7 @@ def create_part_of_relationships(issues: List[Dict]) -> List[Dict[str, Any]]:
     return relationships
 
 def create_assigned_to_relationships(issues: List[Dict]) -> List[Dict[str, Any]]:
-    """Create ASSIGNED_TO relationships: Issue → Person."""
+    """Create ASSIGNED_TO relationships: Issue ↔ Person (undirected)."""
     relationships = []
     
     for issue in issues:

@@ -338,7 +338,7 @@ def build_relationships(commits, issues):
             "to_type": "Branch"
         })
         
-        # AUTHORED_BY: Commit → Person
+        # AUTHORED_BY: Commit ↔ Person (undirected)
         relationships.append({
             "type": "AUTHORED_BY",
             "from_id": commit["id"],

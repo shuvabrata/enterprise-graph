@@ -145,8 +145,8 @@ def _print_relationship_coverage(coverage) -> None:
         print()
     
     if coverage.bidirectional_mismatches:
-        print(f"{Colors.RED}{Colors.BOLD}BIDIRECTIONAL MISMATCHES ({len(coverage.bidirectional_mismatches)}){Colors.RESET}")
-        print(f"{Colors.RED}These bidirectional relationships are missing their reverse:{Colors.RESET}")
+        print(f"{Colors.RED}{Colors.BOLD}DIRECTIONAL MISMATCHES ({len(coverage.bidirectional_mismatches)}){Colors.RESET}")
+        print(f"{Colors.RED}These directional relationships are missing their reverse:{Colors.RESET}")
         for rel in coverage.bidirectional_mismatches:
             print(f"  ⚠ {rel}")
         print()
@@ -169,18 +169,18 @@ def _print_relationship_existence(existence_dict) -> None:
     if expected:
         print(f"{Colors.BOLD}EXPECTED RELATIONSHIPS ({len(expected)}){Colors.RESET}")
         print(f"{'-'*100}")
-        header = f"{'Relationship':<25} {'Count':<10} {'Props':<8} {'Bidirectional':<15} {'Reverse':<25} {'Rev Count':<10} {'Diff':<10}"
+        header = f"{'Relationship':<25} {'Count':<10} {'Props':<8} {'Directionality':<15} {'Reverse':<25} {'Rev Count':<10} {'Diff':<10}"
         print(header)
         print(f"{'-'*100}")
         
         for rel_type in sorted(expected.keys()):
             result = expected[rel_type]
             
-            # Format bidirectional
+            # Format directionality
             if result.is_same_name_bidirectional:
-                bidir_str = f"{Colors.GREEN}Same name{Colors.RESET}"
+                bidir_str = f"{Colors.GREEN}Undirected{Colors.RESET}"
             elif result.is_bidirectional:
-                bidir_str = f"{Colors.BLUE}Yes{Colors.RESET}"
+                bidir_str = f"{Colors.BLUE}Directional{Colors.RESET}"
             else:
                 bidir_str = "No"
             
@@ -209,7 +209,7 @@ def _print_relationship_existence(existence_dict) -> None:
     # Unexpected relationships
     if unexpected:
         print(f"{Colors.YELLOW}{Colors.BOLD}UNEXPECTED RELATIONSHIPS ({len(unexpected)}){Colors.RESET}")
-        print(f"{Colors.YELLOW}These are not defined in BIDIRECTIONAL_RELATIONSHIPS:{Colors.RESET}")
+        print(f"{Colors.YELLOW}These are not defined in model relationship definitions:{Colors.RESET}")
         print(f"{'-'*100}")
         for rel_type in sorted(unexpected.keys()):
             result = unexpected[rel_type]
@@ -571,11 +571,11 @@ def _generate_relationship_table_html(rel_type: str, results: List[PropertyValid
 
 
 def _generate_relationship_existence_html(relationship_existence: dict) -> str:
-    """Generate HTML table for relationship existence with counts and bidirectional checking."""
+    """Generate HTML table for relationship existence with counts and directional checking."""
     html = '<div class="entity-section">\n'
     html += '<table>\n<thead>\n<tr>\n'
     html += '<th>Relationship</th><th>Count</th><th>Has Properties</th><th>Expected</th>'
-    html += '<th>Bidirectional</th><th>Reverse Rel</th><th>Reverse Count</th><th>Discrepancy</th>\n'
+    html += '<th>Directional</th><th>Reverse Rel</th><th>Reverse Count</th><th>Discrepancy</th>\n'
     html += '</tr>\n</thead>\n<tbody>\n'
     
     # Sort by relationship name
@@ -587,7 +587,10 @@ def _generate_relationship_existence_html(relationship_existence: dict) -> str:
         
         has_props = '✓' if result.has_properties else '—'
         is_expected = '✓' if result.is_expected else '✗ UNEXPECTED'
-        is_bidir = '✓' if result.is_bidirectional else '—'
+        if result.is_same_name_bidirectional:
+            is_bidir = 'Undirected'
+        else:
+            is_bidir = '✓' if result.is_bidirectional else '—'
         
         reverse_rel = result.reverse_rel_type or '—'
         reverse_count = result.reverse_count
@@ -649,7 +652,7 @@ def _generate_relationship_coverage_html(coverage: 'RelationshipCoverageResult')
     
     if coverage.bidirectional_mismatches:
         html += '<div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 10px 0;">\n'
-        html += f'<h3 style="color: #856404; margin-top: 0;">Bidirectional Mismatches ({len(coverage.bidirectional_mismatches)})</h3>\n'
+        html += f'<h3 style="color: #856404; margin-top: 0;">Directional Mismatches ({len(coverage.bidirectional_mismatches)})</h3>\n'
         html += '<ul>\n'
         for mismatch in coverage.bidirectional_mismatches:
             html += f'<li>{mismatch}</li>\n'

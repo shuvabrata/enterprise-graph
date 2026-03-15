@@ -8,7 +8,7 @@ This layer creates branch nodes representing Git branches in each repository.
 - ~40 Branch nodes (1 main branch + 3-5 feature branches per repository)
 
 **Relationships Created:**
-- `BRANCH_OF`: Branch → Repository
+- `BRANCH_OF`: Branch ↔ Repository (undirected)
 
 ## Branch Types
 
@@ -72,12 +72,12 @@ The loader automatically runs validation queries. You can also explore in Neo4j 
 
 ```cypher
 // View all branches by repository
-MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
 RETURN r.name, collect(b.name) as branches
 ORDER BY r.name
 
 // Find active feature branches
-MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
 WHERE NOT b.is_default AND NOT b.is_deleted
 RETURN r.name, b.name, b.last_commit_timestamp
 ORDER BY b.last_commit_timestamp DESC
@@ -92,12 +92,12 @@ RETURN b.name, b.last_commit_timestamp,
 ORDER BY days_old DESC
 
 // Branches linked to specific epic
-MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
 WHERE b.name CONTAINS 'PLAT-1'
 RETURN r.name, b.name, b.is_deleted
 
 // Protected branches across all repos
-MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
 WHERE b.is_protected
 RETURN r.name, collect(b.name) as protected_branches
 ```

@@ -10,33 +10,33 @@ from typing import Dict, Set, Tuple, Optional
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from db.models import BIDIRECTIONAL_RELATIONSHIPS
+from db.models import DIRECTIONAL_RELATIONSHIPS, UNDIRECTED_RELATIONSHIPS
 
 
 def get_expected_relationships() -> Dict[str, str]:
     """
-    Get expected relationships from BIDIRECTIONAL_RELATIONSHIPS in db/models.py.
+    Get expected directional relationships from DIRECTIONAL_RELATIONSHIPS in db/models.py.
     
     Returns:
         Dictionary mapping relationship type to its reverse type.
-        For same-name bidirectional, both forward and reverse map to same name.
-        For unidirectional, maps to None.
     """
-    return dict(BIDIRECTIONAL_RELATIONSHIPS)
+    return dict(DIRECTIONAL_RELATIONSHIPS)
 
 
 def get_all_relationship_names() -> Set[str]:
     """
-    Get all unique relationship names (both forward and reverse).
+    Get all unique relationship names (directional forward/reverse + undirected).
     
     Returns:
         Set of all unique relationship type names
     """
     all_names = set()
-    for forward, reverse in BIDIRECTIONAL_RELATIONSHIPS.items():
+    for forward, reverse in DIRECTIONAL_RELATIONSHIPS.items():
         all_names.add(forward)
         if reverse:
             all_names.add(reverse)
+    for name in UNDIRECTED_RELATIONSHIPS:
+        all_names.add(name)
     return all_names
 
 
@@ -45,26 +45,22 @@ def categorize_relationships() -> Tuple[Set[str], Dict[str, Set[str]], Set[str]]
     Categorize relationships by type.
     
     Returns:
-        Tuple of (same_name_bidirectional, different_name_bidirectional, unidirectional)
-        - same_name_bidirectional: Set of relationship names that are same in both directions
+        Tuple of (undirected, different_name_bidirectional, unidirectional)
+        - undirected: Set of relationship names stored as single edges and queried undirected
         - different_name_bidirectional: Dict mapping forward->reverse for directional pairs
-        - unidirectional: Set of relationships that only go one way (reverse is None or not bidirectional)
+        - unidirectional: Set of relationships that only go one way
     """
-    same_name = set()
+    undirected = set(UNDIRECTED_RELATIONSHIPS)
     different_name = {}
     unidirectional = set()
     
     processed = set()
     
-    for forward, reverse in BIDIRECTIONAL_RELATIONSHIPS.items():
+    for forward, reverse in DIRECTIONAL_RELATIONSHIPS.items():
         if forward in processed:
             continue
-            
-        if forward == reverse:
-            # Same name bidirectional
-            same_name.add(forward)
-            processed.add(forward)
-        elif reverse and reverse in BIDIRECTIONAL_RELATIONSHIPS:
+        
+        if reverse and reverse in DIRECTIONAL_RELATIONSHIPS:
             # Different name bidirectional (both directions exist in dict)
             different_name[forward] = reverse
             processed.add(forward)
@@ -76,27 +72,25 @@ def categorize_relationships() -> Tuple[Set[str], Dict[str, Set[str]], Set[str]]
                 different_name[forward] = reverse
                 processed.add(forward)
     
-    return same_name, different_name, unidirectional
+    return undirected, different_name, unidirectional
 
 
 def get_relationship_pair(rel_type: str) -> Optional[str]:
     """
-    Get the paired relationship type for a bidirectional relationship.
+    Get the paired relationship type for a directional relationship.
     
     Args:
         rel_type: Relationship type name
         
     Returns:
-        The reverse relationship type, or None if unidirectional or same-name bidirectional
+        The reverse relationship type, or None if unidirectional or undirected
     """
-    if rel_type in BIDIRECTIONAL_RELATIONSHIPS:
-        reverse = BIDIRECTIONAL_RELATIONSHIPS[rel_type]
-        if reverse == rel_type:
-            return None  # Same-name bidirectional
+    if rel_type in DIRECTIONAL_RELATIONSHIPS:
+        reverse = DIRECTIONAL_RELATIONSHIPS[rel_type]
         return reverse
     
     # Check if this is a reverse relationship
-    for forward, reverse in BIDIRECTIONAL_RELATIONSHIPS.items():
+    for forward, reverse in DIRECTIONAL_RELATIONSHIPS.items():
         if reverse == rel_type and forward != reverse:
             return forward
     
@@ -105,19 +99,19 @@ def get_relationship_pair(rel_type: str) -> Optional[str]:
 
 def is_bidirectional(rel_type: str) -> bool:
     """
-    Check if a relationship type is bidirectional.
+    Check if a relationship type is directional (requires reverse edge).
     
     Args:
         rel_type: Relationship type name
         
     Returns:
-        True if relationship is bidirectional (same or different name)
+        True if relationship is directional (has explicit reverse edge)
     """
-    if rel_type in BIDIRECTIONAL_RELATIONSHIPS:
+    if rel_type in DIRECTIONAL_RELATIONSHIPS:
         return True
     
     # Check if it's a reverse relationship
-    for forward, reverse in BIDIRECTIONAL_RELATIONSHIPS.items():
+    for forward, reverse in DIRECTIONAL_RELATIONSHIPS.items():
         if reverse == rel_type:
             return True
     
@@ -126,29 +120,29 @@ def is_bidirectional(rel_type: str) -> bool:
 
 def is_same_name_bidirectional(rel_type: str) -> bool:
     """
-    Check if a relationship uses the same name in both directions.
+    Check if a relationship is stored as undirected.
     
     Args:
         rel_type: Relationship type name
         
     Returns:
-        True if relationship uses same name bidirectionally
+        True if relationship is undirected
     """
-    return rel_type in BIDIRECTIONAL_RELATIONSHIPS and BIDIRECTIONAL_RELATIONSHIPS[rel_type] == rel_type
+    return rel_type in UNDIRECTED_RELATIONSHIPS
 
 
 def print_relationship_summary():
     """Print summary of expected relationships."""
-    same_name, different_name, unidirectional = categorize_relationships()
+    undirected, different_name, unidirectional = categorize_relationships()
     all_names = get_all_relationship_names()
     
     print(f"\n{'='*80}")
     print(f"EXPECTED RELATIONSHIPS FROM db/models.py")
     print(f"{'='*80}\n")
     
-    print(f"Same-name bidirectional ({len(same_name)}):")
-    for name in sorted(same_name):
-        print(f"  - {name} ↔ {name}")
+    print(f"Undirected ({len(undirected)}):")
+    for name in sorted(undirected):
+        print(f"  - {name} (stored once)")
     
     print(f"\nDifferent-name bidirectional ({len(different_name)} pairs):")
     processed = set()

@@ -39,6 +39,7 @@ def generate_branches_for_repo(repo: Dict, epics: List[Dict]) -> List[Dict]:
         "is_default": True,
         "is_protected": True,
         "is_deleted": False,
+        "is_external": False,
         "last_commit_sha": f"abc{random.randint(1000, 9999)}def",
         "last_commit_timestamp": datetime.now().isoformat(),
         "repository_id": repo_id

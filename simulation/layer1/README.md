@@ -116,19 +116,19 @@ with driver.session() as session:
     merge_relationship(session, reports_rel)
 ```
 
-### Bidirectional Relationships
+### Relationship Directionality
 
-The utilities automatically create bidirectional relationships:
+The utilities handle directionality automatically:
 
-- `MEMBER_OF` (Person ↔ Team)
-- `REPORTS_TO` → `MANAGES` (Person reports to Person, Person manages Person)
-- `MANAGES` → `MANAGED_BY` (Person manages Team, Team managed by Person)
-- `MAPS_TO` (IdentityMapping ↔ Person)
+- `MEMBER_OF` (Person ↔ Team, undirected)
+- `MAPS_TO` (IdentityMapping ↔ Person, undirected)
+- `REPORTS_TO` → `MANAGES` (directional pair)
+- `MANAGES` → `MANAGED_BY` (directional pair)
 
 ### Key Features
 
 1. **MERGE instead of CREATE**: All operations use MERGE to handle duplicates gracefully
-2. **Automatic bidirectional relationships**: No need to create reverse relationships manually
+2. **Automatic reverse edges for directional pairs**: No need to create reverse relationships manually
 3. **Auto-create missing nodes**: Relationships will create placeholder nodes if they don't exist
 4. **Single-node operations**: Perfect for streaming data or API responses
 5. **Flexible relationship handling**: Add relationships during node creation or separately
@@ -231,10 +231,10 @@ This layer establishes the organizational structure that serves as the foundatio
 - 114 IdentityMapping nodes (GitHub and Jira for each person)
 
 **Relationships Created:**
-- `MEMBER_OF`: Person → Team (57 relationships)
+- `MEMBER_OF`: Person ↔ Team (undirected, 57 relationships)
 - `REPORTS_TO`: Person → Person (52 relationships - engineers and PMs report to managers)
 - `MANAGES`: Person → Team (5 relationships - each manager manages one team)
-- `MAPS_TO`: IdentityMapping → Person (114 relationships)
+- `MAPS_TO`: IdentityMapping ↔ Person (undirected, 114 relationships)
 
 ## Team Structure
 
@@ -289,7 +289,7 @@ The loader automatically runs validation queries, but you can also explore in Ne
 
 ```cypher
 // View all teams and their members
-MATCH (t:Team)<-[:MEMBER_OF]-(p:Person)
+MATCH (t:Team)-[:MEMBER_OF]-(p:Person)
 RETURN t.name, collect(p.name) as members
 
 // View organizational hierarchy
@@ -297,7 +297,7 @@ MATCH (p:Person)-[:REPORTS_TO]->(m:Person)
 RETURN p, m
 
 // Find all identity mappings for a person
-MATCH (p:Person {name: "Add a valid name here"})<-[:MAPS_TO]-(i:IdentityMapping)
+MATCH (p:Person {name: "Add a valid name here"})-[:MAPS_TO]-(i:IdentityMapping)
 RETURN p.name, i.provider, i.username, i.email
 ```
 

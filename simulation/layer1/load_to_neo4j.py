@@ -13,7 +13,7 @@ from neo4j import GraphDatabase
 from db.models import (
     Person, Team, IdentityMapping, Relationship,
     merge_person, merge_team, merge_identity_mapping, merge_relationship,
-    create_constraints
+    create_constraints, DIRECTIONAL_RELATIONSHIPS
 )
 
 class Layer1Loader:
@@ -104,12 +104,13 @@ class Layer1Loader:
                 relationship = Relationship(**rel_data)
                 merge_relationship(session, relationship)
                 
-                # Count bidirectional relationships as 2
-                rel_counts[rel_type] = rel_counts.get(rel_type, 0) + 2
+                # Count directional pairs as 2 (reverse edge is created automatically)
+                increment = 2 if rel_type in DIRECTIONAL_RELATIONSHIPS else 1
+                rel_counts[rel_type] = rel_counts.get(rel_type, 0) + increment
             
             # Report results
             for rel_type, count in rel_counts.items():
-                print(f"   ✓ {rel_type}: {count} (includes bidirectional)")
+                print(f"   ✓ {rel_type}: {count} (includes reverse edges for directional pairs)")
             
             if skipped_count > 0:
                 print(f"   - Skipped {skipped_count} MAPS_TO relationships (handled separately)")
@@ -146,7 +147,7 @@ class Layer1Loader:
             # Query 3: Team sizes
             print("\n3. Team sizes:")
             query3 = """
-            MATCH (t:Team)<-[:MEMBER_OF]-(p:Person)
+            MATCH (t:Team)-[:MEMBER_OF]-(p:Person)
             RETURN t.name, count(p) as team_size
             ORDER BY team_size DESC
             """

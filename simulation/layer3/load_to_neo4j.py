@@ -3,7 +3,7 @@ Layer 3 Neo4j Loader: Load Jira Epics into Neo4j
 Loads Epic nodes and creates relationships to existing Initiative, Person, and Team nodes.
 DOES NOT clear existing data - this is an incremental load.
 """
-
+import sys
 import json
 import os
 import traceback
@@ -12,7 +12,7 @@ from neo4j import GraphDatabase
 from db.models import (
     Epic, Relationship,
     merge_epic, merge_relationship,
-    create_constraints
+    create_constraints, DIRECTIONAL_RELATIONSHIPS
 )
 
 class Layer3Loader:
@@ -135,12 +135,13 @@ class Layer3Loader:
                 relationship = Relationship(**rel_data)
                 merge_relationship(session, relationship)
                 
-                # Count bidirectional relationships as 2
-                rel_counts[rel_type] = rel_counts.get(rel_type, 0) + 2
+                # Count directional pairs as 2 (reverse edge is created automatically)
+                increment = 2 if rel_type in DIRECTIONAL_RELATIONSHIPS else 1
+                rel_counts[rel_type] = rel_counts.get(rel_type, 0) + increment
             
             # Report results
             for rel_type, count in rel_counts.items():
-                print(f"   ✓ {rel_type}: {count} (includes bidirectional)")
+                print(f"   ✓ {rel_type}: {count} (includes reverse edges for directional pairs)")
             
             if skipped_count > 0:
                 print(f"   - Skipped {skipped_count} relationships (handled in load_epics)")
@@ -167,7 +168,7 @@ class Layer3Loader:
             # Query 2: Epic ownership distribution
             print("\n2. Epic ownership distribution:")
             query2 = """
-            MATCH (e:Epic)-[:ASSIGNED_TO]->(p:Person)
+            MATCH (e:Epic)-[:ASSIGNED_TO]-(p:Person)
             RETURN p.name, p.role, p.title, count(e) as epic_count
             ORDER BY epic_count DESC, p.name
             """
@@ -178,7 +179,7 @@ class Layer3Loader:
             # Query 3: Epics by team
             print("\n3. Epics by team:")
             query3 = """
-            MATCH (e:Epic)-[:TEAM]->(t:Team)
+            MATCH (e:Epic)-[:TEAM]-(t:Team)
             RETURN t.name, collect(e.key) as epics
             ORDER BY t.name
             """
@@ -189,7 +190,7 @@ class Layer3Loader:
             # Query 4: Cross-team epics
             print("\n4. Cross-team epics (should be none with current model):")
             query4 = """
-            MATCH (e:Epic)-[:TEAM]->(t:Team)
+            MATCH (e:Epic)-[:TEAM]-(t:Team)
             WITH e, count(t) as team_count
             WHERE team_count > 1
             RETURN e.key, e.summary, team_count

@@ -15,7 +15,7 @@ def get_existing_branch_metadata(
         dict: Mapping of branch_name -> {last_commit_sha, is_deleted}
     """
     query = """
-    MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository {id: $repo_id})
+    MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository {id: $repo_id})
     RETURN b.name as name, 
            b.last_commit_sha as last_commit_sha,
            b.is_deleted as is_deleted

@@ -15,7 +15,7 @@ def get_fully_synced_commit_shas(
         set: Set of commit SHAs that have fully_synced=true
     """
     query = """
-    MATCH (c:Commit)-[:PART_OF]->(b:Branch)-[:BRANCH_OF]->(r:Repository {id: $repo_id})
+    MATCH (c:Commit)-[:PART_OF]->(b:Branch)-[:BRANCH_OF]-(r:Repository {id: $repo_id})
     WHERE c.fully_synced = true
     RETURN collect(c.sha) as processed_shas
     """

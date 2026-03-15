@@ -3,7 +3,7 @@ Layer 4 Neo4j Loader: Load Jira Stories, Bugs, Tasks & Sprints into Neo4j
 Loads Issue and Sprint nodes and creates relationships to existing Epic, Person, and Sprint nodes.
 DOES NOT clear existing data - this is an incremental load.
 """
-
+import sys
 import json
 import os
 import traceback
@@ -12,7 +12,7 @@ from neo4j import GraphDatabase
 from db.models import (
     Issue, Sprint, Relationship,
     merge_issue, merge_sprint, merge_relationship,
-    create_constraints
+    create_constraints, DIRECTIONAL_RELATIONSHIPS
 )
 
 class Layer4Loader:
@@ -147,15 +147,13 @@ class Layer4Loader:
                 relationship = Relationship(**rel_data)
                 merge_relationship(session, relationship)
                 
-                # Count bidirectional relationships
-                if rel_type in ["IN_SPRINT", "BLOCKS", "DEPENDS_ON", "RELATES_TO"]:
-                    rel_counts[rel_type] = rel_counts.get(rel_type, 0) + 2
-                else:
-                    rel_counts[rel_type] = rel_counts.get(rel_type, 0) + 1
+                # Count directional pairs as 2 (reverse edge is created automatically)
+                increment = 2 if rel_type in DIRECTIONAL_RELATIONSHIPS else 1
+                rel_counts[rel_type] = rel_counts.get(rel_type, 0) + increment
             
             # Report results
             for rel_type, count in rel_counts.items():
-                print(f"   ✓ {rel_type}: {count} (includes bidirectional)")
+                print(f"   ✓ {rel_type}: {count} (includes reverse edges for directional pairs)")
             
             if skipped_count > 0:
                 print(f"   - Skipped {skipped_count} relationships (handled in load_issues)")
@@ -222,7 +220,7 @@ class Layer4Loader:
             # Query 5: Bugs linked to stories
             print("\n5. Bugs related to stories:")
             query5 = """
-            MATCH (bug:Issue {type: 'Bug'})-[:RELATES_TO]->(story:Issue {type: 'Story'})
+            MATCH (bug:Issue {type: 'Bug'})-[:RELATES_TO]-(story:Issue {type: 'Story'})
             RETURN bug.key, story.key as story, bug.summary
             """
             result = session.run(query5)

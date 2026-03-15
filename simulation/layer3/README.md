@@ -9,8 +9,8 @@ This layer breaks down high-level initiatives into actionable epics representing
 
 **Relationships Created:**
 - `PART_OF`: Epic → Initiative (12 relationships)
-- `ASSIGNED_TO`: Epic → Person (12 relationships - epic owners from relevant teams)
-- `TEAM`: Epic → Team (12 relationships - links epics to owning teams)
+- `ASSIGNED_TO`: Epic ↔ Person (undirected, 12 relationships - epic owners from relevant teams)
+- `TEAM`: Epic ↔ Team (undirected, 12 relationships - links epics to owning teams)
 
 ## Epics Distribution
 
@@ -68,8 +68,8 @@ The loader automatically runs validation queries. You can also explore in Neo4j 
 
 ```cypher
 // View all epics with owners and teams
-MATCH (e:Epic)-[:ASSIGNED_TO]->(owner:Person)
-MATCH (e)-[:TEAM]->(team:Team)
+MATCH (e:Epic)-[:ASSIGNED_TO]-(owner:Person)
+MATCH (e)-[:TEAM]-(team:Team)
 MATCH (e)-[:PART_OF]->(i:Initiative)
 RETURN e.key, e.summary, 
        owner.name as owner, owner.title as owner_title,
@@ -84,12 +84,12 @@ RETURN i.key, i.summary, collect(e.key) as epics
 ORDER BY i.key
 
 // Epic ownership distribution
-MATCH (e:Epic)-[:ASSIGNED_TO]->(p:Person)
+MATCH (e:Epic)-[:ASSIGNED_TO]-(p:Person)
 RETURN p.name, p.role, count(e) as epic_count
 ORDER BY epic_count DESC
 
 // Epics by team
-MATCH (e:Epic)-[:TEAM]->(t:Team)
+MATCH (e:Epic)-[:TEAM]-(t:Team)
 RETURN t.name, count(e) as epic_count, collect(e.key) as epics
 ORDER BY epic_count DESC
 

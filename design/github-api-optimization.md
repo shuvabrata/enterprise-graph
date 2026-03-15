@@ -35,7 +35,7 @@ SET r.description = $description, r.topics = $topics
 Query Neo4j for already-synced commit SHAs before processing. Filter them out before making GitHub API calls.
 
 ```cypher
-MATCH (c:Commit)-[:PART_OF]->(b:Branch)-[:BRANCH_OF]->(r:Repository {id: $repo_id})
+MATCH (c:Commit)-[:PART_OF]->(b:Branch)-[:BRANCH_OF]-(r:Repository {id: $repo_id})
 WHERE c.fully_synced = true
 RETURN collect(c.sha) as processed_shas
 ```
@@ -59,7 +59,7 @@ RETURN i.username
 Skip re-processing branches that haven't changed since last sync. Batch-fetch existing branch metadata and compare `last_commit_sha` to detect updates.
 
 ```cypher
-MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository {id: $repo_id})
+MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository {id: $repo_id})
 RETURN b.name, b.last_commit_sha, b.is_deleted
 ```
 
@@ -73,7 +73,7 @@ RETURN b.name, b.last_commit_sha, b.is_deleted
 Pre-filter closed/merged PRs that are already in Neo4j. Only re-process open PRs (which can receive new commits, reviews, labels, etc.).
 
 ```cypher
-MATCH (pr:PullRequest)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]->(r:Repository {id: $repo_id})
+MATCH (pr:PullRequest)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]-(r:Repository {id: $repo_id})
 WHERE pr.state IN ['merged', 'closed']
 RETURN collect(pr.number) as processed_pr_numbers
 ```

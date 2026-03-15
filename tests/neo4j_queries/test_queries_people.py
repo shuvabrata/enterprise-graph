@@ -8,7 +8,7 @@ import pytest
 def test_team_distribution(query_executor, expectations, track_result):
     """View team sizes."""
     query = """
-    MATCH (t:Team)<-[:MEMBER_OF]-(p:Person)
+    MATCH (t:Team)-[:MEMBER_OF]-(p:Person)
     RETURN t.name as team, count(p) as team_size
     ORDER BY team_size DESC
     """
@@ -27,7 +27,7 @@ def test_team_distribution(query_executor, expectations, track_result):
 def test_teams_and_members(query_executor, expectations, track_result):
     """View all teams and their members."""
     query = """
-    MATCH (t:Team)<-[:MEMBER_OF]-(p:Person)
+    MATCH (t:Team)-[:MEMBER_OF]-(p:Person)
     RETURN t.name, collect(p.name) as members
     ORDER BY t.name
     """
@@ -47,7 +47,7 @@ def test_identity_mappings(query_executor, expectations, track_result):
     """Find all identity mappings for a person."""
     # Note: This query requires a specific person name, so it may return 0 rows
     query = """
-    MATCH (p:Person {name: "Add a valid name here"})<-[:MAPS_TO]-(i:IdentityMapping)
+    MATCH (p:Person {name: "Add a valid name here"})-[:MAPS_TO]-(i:IdentityMapping)
     RETURN p.name, i.provider, i.username, i.email
     """
     

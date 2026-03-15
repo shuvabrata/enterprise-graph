@@ -32,7 +32,7 @@ def new_branch_handler(
     repo_id: str,
     repo_owner: Optional[str] = None
 ) -> None:
-    """Handle a branch by creating Branch node and BRANCH_OF relationship.
+    """Handle a branch by creating Branch node and BRANCH_OF relationship (undirected).
 
     Args:
         session: Neo4j session
@@ -77,8 +77,8 @@ def new_branch_handler(
             url=github_url
         )
 
-        # Create BRANCH_OF relationship
-        logger.debug(f"        Creating BRANCH_OF relationship: {branch_id} -> {repo_id}")
+        # Create BRANCH_OF relationship (undirected)
+        logger.debug(f"        Creating BRANCH_OF relationship between {branch_id} and {repo_id}")
         relationship = Relationship(
             type="BRANCH_OF",
             from_id=branch_id,

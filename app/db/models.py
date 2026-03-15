@@ -248,8 +248,8 @@ class Epic:
     
     Note: The 'assignee_id', 'team_id', and 'initiative_id' fields are NOT part of this dataclass.
     They should be extracted from JSON and used to create relationships:
-    - ASSIGNED_TO -> Person
-    - TEAM -> Team
+    - ASSIGNED_TO (undirected) - Person
+    - TEAM (undirected) - Team
     - PART_OF -> Initiative
     
     Example:
@@ -308,9 +308,9 @@ class Issue:
     are NOT part of this dataclass. They should be extracted from JSON and used to
     create relationships:
     - PART_OF -> Epic
-    - ASSIGNED_TO -> Person
-    - REPORTED_BY -> Person
-    - RELATES_TO -> Issue (for bugs related to stories)
+    - ASSIGNED_TO (undirected) - Person
+    - REPORTED_BY (undirected) - Person
+    - RELATES_TO (undirected) - Issue (for bugs related to stories)
     
     Example:
         issue = Issue(
@@ -753,54 +753,60 @@ class Relationship:
 
 
 # ============================================================================
-# BIDIRECTIONAL RELATIONSHIP MAPPINGS
+# RELATIONSHIP DIRECTIONALITY
 # ============================================================================
 
-BIDIRECTIONAL_RELATIONSHIPS = {
+# Relationships that should store a single edge and be queried as undirected.
+UNDIRECTED_RELATIONSHIPS = {
     # Layer 1
-    "MEMBER_OF": "MEMBER_OF",       # Person ↔ Team
+    "MEMBER_OF",        # Person ↔ Team
+    "MAPS_TO",          # IdentityMapping ↔ Person
+    
+    # Layer 2
+    "ASSIGNED_TO",      # Initiative ↔ Person
+    "REPORTED_BY",      # Initiative ↔ Person
+    
+    # Layer 3
+    "TEAM",             # Epic ↔ Team
+    
+    # Layer 4
+    "RELATES_TO",       # Issue ↔ Issue (symmetric)
+    
+    # Layer 5
+    "COLLABORATOR",     # Team/Person ↔ Repository
+    
+    # Layer 6
+    "BRANCH_OF",        # Branch ↔ Repository
+    
+    # Layer 7
+    "AUTHORED_BY",      # Commit ↔ Person
+}
+
+# Directional relationships that should create explicit reverse edges.
+DIRECTIONAL_RELATIONSHIPS = {
+    # Layer 1
     "REPORTS_TO": "MANAGES",        # Person → Person (reports to) / Person ← Person (manages)
     "MANAGES": "MANAGED_BY",        # Person → Team (manages) / Team ← Person (managed by)
-    "MAPS_TO": "MAPS_TO",           # IdentityMapping ↔ Person
     
     # Layer 2
     "PART_OF": "CONTAINS",          # Initiative → Project / Project ← Initiative
-    "ASSIGNED_TO": "ASSIGNED_TO",   # Initiative ↔ Person
-    "REPORTED_BY": "REPORTED_BY",   # Initiative ↔ Person
-    
-    # Layer 3
-    # "PART_OF": "CONTAINS",        # Epic → Initiative / Initiative ← Epic (already defined in Layer 2)
-    # "ASSIGNED_TO": "ASSIGNED_TO", # Epic ↔ Person (already defined in Layer 2)
-    "TEAM": "TEAM",                 # Epic ↔ Team
     
     # Layer 4
-    # "PART_OF": "CONTAINS",        # Issue → Epic / Epic ← Issue (already defined in Layer 2)
-    # "ASSIGNED_TO": "ASSIGNED_TO", # Issue ↔ Person (already defined in Layer 2)
-    # "REPORTED_BY": "REPORTED_BY", # Issue ↔ Person (already defined in Layer 2)
     "IN_SPRINT": "CONTAINS",        # Issue → Sprint / Sprint ← Issue
     "BLOCKS": "BLOCKED_BY",         # Issue → Issue (blocks) / Issue ← Issue (blocked by)
     "DEPENDS_ON": "DEPENDENCY_OF",  # Issue → Issue (depends on) / Issue ← Issue (dependency of)
-    "RELATES_TO": "RELATES_TO",     # Bug ↔ Story
-    
-    # Layer 5
-    "COLLABORATOR": "COLLABORATOR",  # Team/Person ↔ Repository (with permission property)
-    
-    # Layer 6
-    "BRANCH_OF": "BRANCH_OF",        # Branch ↔ Repository
     
     # Layer 7
-    "PART_OF": "CONTAINS",           # Commit → Branch / Branch ← Commit (note: PART_OF used in other layers too)
-    "AUTHORED_BY": "AUTHORED_BY",    # Commit ↔ Person
-    "MODIFIES": "MODIFIED_BY",       # Commit → File (modifies) / File ← Commit (modified by) - with properties
-    "REFERENCES": "REFERENCED_BY",   # Commit → Issue (references) / Issue ← Commit (referenced by)
+    "MODIFIES": "MODIFIED_BY",      # Commit → File (modifies) / File ← Commit (modified by) - with properties
+    "REFERENCES": "REFERENCED_BY",  # Commit → Issue (references) / Issue ← Commit (referenced by)
     
     # Layer 8
-    "INCLUDES": "INCLUDED_IN",       # PullRequest → Commit (includes) / Commit ← PullRequest (included in)
-    "TARGETS": "TARGETED_BY",        # PullRequest → Branch (targets) / Branch ← PullRequest (targeted by)
-    "CREATED_BY": "CREATED",         # PullRequest → Person (created by) / Person ← PullRequest (created)
-    "REVIEWED_BY": "REVIEWED",       # PullRequest → Person (reviewed by) / Person ← PullRequest (reviewed) - with state property
+    "INCLUDES": "INCLUDED_IN",      # PullRequest → Commit (includes) / Commit ← PullRequest (included in)
+    "TARGETS": "TARGETED_BY",       # PullRequest → Branch (targets) / Branch ← PullRequest (targeted by)
+    "CREATED_BY": "CREATED",        # PullRequest → Person (created by) / Person ← PullRequest (created)
+    "REVIEWED_BY": "REVIEWED",      # PullRequest → Person (reviewed by) / Person ← PullRequest (reviewed) - with state property
     "REQUESTED_REVIEWER": "REVIEW_REQUESTED_BY",  # PullRequest → Person / Person ← PullRequest
-    "MERGED_BY": "MERGED",           # PullRequest → Person (merged by) / Person ← PullRequest (merged)
+    "MERGED_BY": "MERGED",          # PullRequest → Person (merged by) / Person ← PullRequest (merged)
 }
 
 
@@ -1446,7 +1452,7 @@ def merge_pull_request(session: Session, pull_request: PullRequest, relationship
 def merge_relationship(session: Session, relationship: Relationship) -> None:
     """
     Merge a relationship between two nodes, creating nodes if they don't exist.
-    Automatically creates bidirectional relationships where applicable.
+    Automatically creates reverse edges for directional relationship pairs.
     
     Args:
         session: Neo4j session
@@ -1481,26 +1487,15 @@ def merge_relationship(session: Session, relationship: Relationship) -> None:
     
     session.run(forward_query, **params)
     
-    # Create the bidirectional relationship if applicable
-    if rel_type in BIDIRECTIONAL_RELATIONSHIPS:
-        reverse_type = BIDIRECTIONAL_RELATIONSHIPS[rel_type]
-        
-        # Special case: Symmetric relationships (same type both ways)
-        if rel_type == reverse_type:
-            reverse_query = f"""
-            MERGE (from:{to_type} {{id: $to_id}})
-            MERGE (to:{from_type} {{id: $from_id}})
-            MERGE (from)-[r:{reverse_type} {props_str}]->(to)
-            RETURN r
-            """
-        else:
-            # Asymmetric bidirectional (REPORTS_TO → MANAGES, etc.)
-            reverse_query = f"""
-            MERGE (from:{to_type} {{id: $to_id}})
-            MERGE (to:{from_type} {{id: $from_id}})
-            MERGE (from)-[r:{reverse_type} {props_str}]->(to)
-            RETURN r
-            """
+    # Create the reverse relationship for directional pairs only
+    if rel_type in DIRECTIONAL_RELATIONSHIPS:
+        reverse_type = DIRECTIONAL_RELATIONSHIPS[rel_type]
+        reverse_query = f"""
+        MERGE (from:{to_type} {{id: $to_id}})
+        MERGE (to:{from_type} {{id: $from_id}})
+        MERGE (from)-[r:{reverse_type} {props_str}]->(to)
+        RETURN r
+        """
         
         session.run(reverse_query, **params)
 
@@ -1508,5 +1503,3 @@ def merge_relationship(session: Session, relationship: Relationship) -> None:
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
-
-

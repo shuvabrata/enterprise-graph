@@ -45,6 +45,7 @@ def load_branches_to_neo4j():
                     is_default=branch_data['is_default'],
                     is_protected=branch_data['is_protected'],
                     is_deleted=branch_data['is_deleted'],
+                    is_external=branch_data.get('is_external', False), 
                     last_commit_sha=branch_data['last_commit_sha'],
                     last_commit_timestamp=branch_data['last_commit_timestamp']
                 )
@@ -86,11 +87,11 @@ def load_relationships():
                     to_type=rel_data['to_type']
                 )
                 
-                # Merge relationship (handles bidirectional automatically)
+                # Merge relationship (handles directionality automatically)
                 merge_relationship(session, relationship)
                 relationship_count += 1
             
-            print(f"✓ Loaded {relationship_count} BRANCH_OF relationships (bidirectional)")
+            print(f"✓ Loaded {relationship_count} BRANCH_OF relationships")
     
     finally:
         driver.close()
@@ -118,7 +119,7 @@ def validate_layer6():
             # 2. Branches per repository
             print("\n2. Total Branches per Repository:")
             result = session.run("""
-                MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+                MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
                 RETURN r.name, 
                        count(b) as total_branches,
                        sum(CASE WHEN b.is_default THEN 1 ELSE 0 END) as default_branches,
@@ -132,7 +133,7 @@ def validate_layer6():
             # 3. Active branches (non-default, not deleted)
             print("\n3. Active Branches per Repository:")
             result = session.run("""
-                MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+                MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
                 WHERE b.is_default = false AND NOT b.is_deleted
                 RETURN r.name, count(b) as active_branches
                 ORDER BY active_branches DESC
@@ -143,7 +144,7 @@ def validate_layer6():
             # 4. Stale branches (> 30 days old)
             print("\n4. Stale Branches (last commit > 30 days ago):")
             result = session.run("""
-                MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+                MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
                 WHERE b.last_commit_timestamp < datetime() - duration({days: 30})
                   AND b.is_default = false
                   AND NOT b.is_deleted
@@ -163,7 +164,7 @@ def validate_layer6():
             # 5. Protected branches
             print("\n5. Protected Branches:")
             result = session.run("""
-                MATCH (b:Branch)-[:BRANCH_OF]->(r:Repository)
+                MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
                 WHERE b.is_protected
                 RETURN r.name, collect(b.name) as protected_branches
                 ORDER BY r.name
@@ -171,18 +172,11 @@ def validate_layer6():
             for record in result:
                 print(f"   {record['r.name']}: {', '.join(record['protected_branches'])}")
             
-            # 6. Verify bidirectional relationships
-            print("\n6. Bidirectional Relationship Verification:")
-            result = session.run("""
-                MATCH (b:Branch)-[r1:BRANCH_OF]->(r:Repository)
-                WHERE NOT exists((r)-[:BRANCH_OF]->(b))
-                RETURN count(*) as missing_reverse
-            """)
-            count = result.single()['missing_reverse']
-            if count == 0:
-                print("   ✓ All BRANCH_OF relationships are bidirectional")
-            else:
-                print(f"   ✗ Found {count} missing reverse relationships")
+            # 6. BRANCH_OF relationship count
+            print("\n6. BRANCH_OF Relationship Count:")
+            result = session.run("MATCH ()-[r:BRANCH_OF]-() RETURN count(r) as rel_count")
+            count = result.single()['rel_count']
+            print(f"   ✓ {count} BRANCH_OF relationships (undirected)")
             
             print("\n" + "=" * 60)
     

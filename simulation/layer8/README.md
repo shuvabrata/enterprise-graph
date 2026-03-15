@@ -160,7 +160,7 @@ With Layer 8, you can now analyze:
 
 ### PR Velocity by Repository
 ```cypher
-MATCH (pr:PullRequest)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (pr:PullRequest)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]-(r:Repository)
 RETURN r.name as repository,
        count(pr) as total_prs,
        sum(CASE WHEN pr.state = 'merged' THEN 1 ELSE 0 END) as merged,
@@ -221,7 +221,7 @@ RETURN min(cycle_days) as min_days,
 ### Large PRs (Risk Indicators)
 ```cypher
 MATCH (pr:PullRequest)-[:CREATED_BY]->(author:Person)
-MATCH (pr)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (pr)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]-(r:Repository)
 WHERE pr.commits_count > 10 OR (pr.additions + pr.deletions) > 2000
 RETURN pr.number as pr_num,
        pr.title as title,
@@ -237,7 +237,7 @@ LIMIT 10
 ### PRs Without Reviews (Quality Risk)
 ```cypher
 MATCH (pr:PullRequest)-[:CREATED_BY]->(author:Person)
-MATCH (pr)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (pr)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]-(r:Repository)
 WHERE NOT (pr)-[:REVIEWED_BY]->(:Person)
 AND pr.state = 'merged'
 RETURN pr.number as pr_num,
@@ -251,8 +251,8 @@ ORDER BY changes DESC
 
 ### Cross-Team Review Patterns
 ```cypher
-MATCH (pr:PullRequest)-[:CREATED_BY]->(author:Person)-[:MEMBER_OF]->(authorTeam:Team)
-MATCH (pr)-[:REVIEWED_BY]->(reviewer:Person)-[:MEMBER_OF]->(reviewerTeam:Team)
+MATCH (pr:PullRequest)-[:CREATED_BY]->(author:Person)-[:MEMBER_OF]-(authorTeam:Team)
+MATCH (pr)-[:REVIEWED_BY]->(reviewer:Person)-[:MEMBER_OF]-(reviewerTeam:Team)
 WHERE authorTeam <> reviewerTeam
 RETURN authorTeam.name as author_team,
        reviewerTeam.name as reviewer_team,
@@ -296,7 +296,7 @@ ORDER BY
 
 ### Hotspot Repositories (Most PR Activity)
 ```cypher
-MATCH (pr:PullRequest)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (pr:PullRequest)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]-(r:Repository)
 RETURN r.name as repository,
        count(pr) as total_prs,
        sum(pr.additions) as total_additions,
@@ -365,8 +365,8 @@ LIMIT 15
 
 ### Commit-to-PR Traceability (Merged PRs Only)
 ```cypher
-MATCH (pr:PullRequest)-[:INCLUDES]->(c:Commit)-[:AUTHORED_BY]->(author:Person)
-MATCH (pr)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (pr:PullRequest)-[:INCLUDES]->(c:Commit)-[:AUTHORED_BY]-(author:Person)
+MATCH (pr)-[:TARGETS]->(b:Branch)-[:BRANCH_OF]-(r:Repository)
 RETURN r.name as repository,
        pr.number as pr_num,
        pr.title as pr_title,
@@ -381,7 +381,7 @@ LIMIT 10
 ```cypher
 MATCH (i:Issue)<-[:REFERENCES]-(c:Commit)<-[:INCLUDES]-(pr:PullRequest)
 MATCH (pr)-[:CREATED_BY]->(author:Person)
-MATCH (pr)-[:TARGETS]->(:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (pr)-[:TARGETS]->(:Branch)-[:BRANCH_OF]-(r:Repository)
 OPTIONAL MATCH (i)-[:BELONGS_TO]->(s:Story)
 OPTIONAL MATCH (s)-[:BELONGS_TO]->(e:Epic)
 RETURN i.key as issue,
@@ -437,7 +437,7 @@ LIMIT 15
 ### Abandoned PRs (Open for Too Long)
 ```cypher
 MATCH (pr:PullRequest)-[:CREATED_BY]->(author:Person)
-MATCH (pr)-[:TARGETS]->(:Branch)-[:BRANCH_OF]->(r:Repository)
+MATCH (pr)-[:TARGETS]->(:Branch)-[:BRANCH_OF]-(r:Repository)
 WHERE pr.state = 'open'
 AND duration.between(pr.created_at, datetime()).days > 7
 RETURN pr.number as pr_num,
