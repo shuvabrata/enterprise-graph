@@ -228,7 +228,8 @@ simulation/data/layer8_pull_requests.json
 
 # Sensitive configs
 .config*
-!.config.json.example  # Allow example config templates
+# Allow example config templates at any depth
+!.config.example.json
 .python-version
 reports/*
 logs/
