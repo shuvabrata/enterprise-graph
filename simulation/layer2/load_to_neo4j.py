@@ -3,7 +3,7 @@ Layer 2 Neo4j Loader: Load Jira Initiatives into Neo4j
 Loads Project and Initiative nodes and creates relationships to existing Person nodes.
 DOES NOT clear existing data - this is an incremental load.
 """
-
+import sys
 import json
 import os
 import traceback
