@@ -45,6 +45,7 @@ def load_branches_to_neo4j():
                     is_default=branch_data['is_default'],
                     is_protected=branch_data['is_protected'],
                     is_deleted=branch_data['is_deleted'],
+                    is_external=branch_data.get('is_external', False), 
                     last_commit_sha=branch_data['last_commit_sha'],
                     last_commit_timestamp=branch_data['last_commit_timestamp']
                 )
