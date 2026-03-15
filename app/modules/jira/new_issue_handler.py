@@ -1,4 +1,5 @@
 from typing import Any, Dict, Optional
+from datetime import datetime, timezone
 
 import os
 from db.models import Issue, Relationship, merge_issue
@@ -75,6 +76,7 @@ def new_issue_handler(
             url = f"{jira_base_url}/browse/{issue_key}"
         
         # Create Issue object
+        _last_synced_at = datetime.now(timezone.utc).isoformat()
         issue = Issue(
             id=issue_id,
             key=issue_key,
@@ -84,7 +86,8 @@ def new_issue_handler(
             status=status,
             story_points=story_points,
             created_at=created,
-            url=url
+            url=url,
+            _last_synced_at=_last_synced_at
         )
         
         # Build relationships

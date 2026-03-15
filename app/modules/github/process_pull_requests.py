@@ -1,7 +1,7 @@
 from common.logger import logger
 from modules.github.get_fully_synced_pr_numbers import get_fully_synced_pr_numbers
 from modules.github.new_pull_request_handler import new_pull_request_handler
-from modules.github.repo_last_synced_at import get_last_synced_at
+from modules.github.repo_last_synced_at import get__last_synced_at
 from modules.github.retry_with_backoff import retry_with_backoff
 
 
@@ -19,10 +19,10 @@ def process_pull_requests(
     person_cache: Any
 ) -> None:
     try:
-        last_synced = get_last_synced_at(session, repo_id)
-        if last_synced:
-            since_date = last_synced if last_synced.tzinfo else last_synced.replace(tzinfo=timezone.utc)
-            logger.info(f"    Incremental sync: Fetching PRs updated since last sync ({since_date.strftime('%Y-%m-%d %H:%M:%S')}...")
+        _last_synced = get__last_synced_at(session, repo_id)
+        if _last_synced:
+            since_date = _last_synced if _last_synced.tzinfo else _last_synced.replace(tzinfo=timezone.utc)
+            logger.info(f"    Incremental sync: Fetching PRs updated since _last_synced_at ({since_date.strftime('%Y-%m-%d %H:%M:%S')}...")
         else:
             pr_days_limit = int(os.getenv('PULL_REQUEST_DAYS_LIMIT', '60'))
             since_date = datetime.now(timezone.utc) - timedelta(days=pr_days_limit)

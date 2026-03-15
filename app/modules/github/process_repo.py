@@ -12,7 +12,7 @@ from github.Repository import Repository
 from typing import Optional, Dict, Any, Tuple
 
 from common.logger import logger, LogContext
-from modules.github.repo_last_synced_at import update_last_synced_at
+from modules.github.repo_last_synced_at import update__last_synced_at
 
 
 def flush_person_cache(person_cache: PersonCache, session: Session) -> None:
@@ -61,4 +61,4 @@ def process_repo_(repo: Repository, session: Session, repo_config: Optional[Dict
         
     process_pull_requests(repo, session, repo_id, repo, person_cache)
     flush_person_cache(person_cache, session)
-    update_last_synced_at(session, repo_id)
+    update__last_synced_at(session, repo_id)

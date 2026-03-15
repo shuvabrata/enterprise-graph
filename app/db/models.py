@@ -177,6 +177,7 @@ class JiraIssueBase:
     labels: Optional[List[str]] = field(default_factory=list)
     components: Optional[List[str]] = field(default_factory=list)
     url: Optional[str] = None  # URL to view the issue in Jira
+    _last_synced_at: Optional[str] = None  # ISO format datetime string - tracks last successful sync
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
         """Convert to Neo4j properties."""
@@ -278,6 +279,7 @@ class Epic:
     due_date: str     # ISO format string (YYYY-MM-DD)
     created_at: str   # ISO format string (YYYY-MM-DD)
     url: Optional[str] = None
+    _last_synced_at: Optional[str] = None  # ISO format datetime string - tracks last successful sync
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
         """Convert to Neo4j properties."""
@@ -339,6 +341,7 @@ class Issue:
     story_points: int
     created_at: str   # ISO format string (YYYY-MM-DD)
     url: Optional[str] = None
+    _last_synced_at: Optional[str] = None  # ISO format datetime string - tracks last successful sync
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
         """Convert to Neo4j properties."""
@@ -418,7 +421,7 @@ class Repository:
             is_private=True,
             topics=["api", "gateway", "python"],
             created_at="2023-11-10",
-            last_synced_at="2026-02-04T10:30:00Z"
+            _last_synced_at="2026-02-04T10:30:00Z"
         )
         
         # COLLABORATOR relationships with properties
@@ -439,7 +442,7 @@ class Repository:
     is_private: bool
     topics: List[str]      # List of topic strings
     created_at: str  # ISO format string (YYYY-MM-DD)
-    last_synced_at: Optional[str] = None  # ISO format datetime string - tracks last successful sync
+    _last_synced_at: Optional[str] = None  # ISO format datetime string - tracks last successful sync
     
     def to_neo4j_properties(self) -> Dict[str, Any]:
         """Convert to Neo4j properties."""
@@ -1071,6 +1074,9 @@ def merge_initiative(session: Session, initiative: Initiative, relationships: Op
         set_clauses.append("i.project_id = $project_id")
     if 'url' in props:
         set_clauses.append("i.url = $url")
+    # Only set _last_synced_at if provided (for incremental sync tracking)
+    if props.get('_last_synced_at'):
+        set_clauses.append("i._last_synced_at = datetime($_last_synced_at)")
     
     # MERGE the Initiative node
     query = f"""
@@ -1115,6 +1121,9 @@ def merge_epic(session: Session, epic: Epic, relationships: Optional[List[Relati
         set_clauses.append("e.created_at = date($created_at)")
     if 'url' in props:
         set_clauses.append("e.url = $url")
+    # Only set _last_synced_at if provided (for incremental sync tracking)
+    if props.get('_last_synced_at'):
+        set_clauses.append("e._last_synced_at = datetime($_last_synced_at)")
     
     # MERGE the Epic node
     query = f"""
@@ -1162,6 +1171,9 @@ def merge_issue(session: Session, issue: Issue, relationships: Optional[List[Rel
         set_clauses.append("i.created_at = date($created_at)")
     if 'url' in props:
         set_clauses.append("i.url = $url")
+    # Only set _last_synced_at if provided (for incremental sync tracking)
+    if props.get('_last_synced_at'):
+        set_clauses.append("i._last_synced_at = datetime($_last_synced_at)")
     
     # MERGE the Issue node
     query = f"""
@@ -1228,7 +1240,7 @@ def merge_repository(session: Session, repository: Repository, relationships: Op
     Merge a Repository node into Neo4j.
     
     Uses ON CREATE SET for immutable properties (name, full_name, created_at)
-    and SET for mutable properties (url, language, is_private, topics, last_synced_at).
+    and SET for mutable properties (url, language, is_private, topics, _last_synced_at).
     
     Args:
         session: Neo4j session
@@ -1254,9 +1266,9 @@ def merge_repository(session: Session, repository: Repository, relationships: Op
         "r.topics = $topics"
     ]
     
-    # Only set last_synced_at if provided (for incremental sync tracking)
-    if props.get('last_synced_at'):
-        set_clauses.append("r.last_synced_at = datetime($last_synced_at)")
+    # Only set _last_synced_at if provided (for incremental sync tracking)
+    if props.get('_last_synced_at'):
+        set_clauses.append("r._last_synced_at = datetime($_last_synced_at)")
     
     # MERGE the Repository node with separate immutable and mutable properties
     query = f"""

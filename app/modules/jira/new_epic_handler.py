@@ -1,4 +1,5 @@
 from typing import Any, Dict, Optional, Set, Dict
+from datetime import datetime, timezone
 import os
 from db.models import Epic, Relationship, merge_epic
 from modules.jira.new_jira_user_handler import new_jira_user_handler
@@ -108,6 +109,7 @@ def new_epic_handler(
         logger.debug(f"    Creating Epic node: {issue_key} - {summary}")
         
         # Create Epic node
+        _last_synced_at = datetime.now(timezone.utc).isoformat()
         epic = Epic(
             id=epic_id,
             key=issue_key,
@@ -117,7 +119,8 @@ def new_epic_handler(
             start_date=start_date or created,  # Fallback to created if no start_date
             due_date=due_date if due_date else '',  # Empty string if no due date
             created_at=created,
-            url=url
+            url=url,
+            _last_synced_at=_last_synced_at
         )
         
         relationships = []

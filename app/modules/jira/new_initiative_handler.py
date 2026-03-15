@@ -1,4 +1,5 @@
 from typing import Any, Dict, Optional, Set
+from datetime import datetime, timezone
 
 from db.models import Initiative, Relationship, merge_initiative
 from modules.jira.new_jira_user_handler import new_jira_user_handler
@@ -77,6 +78,7 @@ def new_initiative_handler(
         logger.debug(f"    Creating Initiative node: {issue_key} - {summary}")
         
         # Create Initiative node
+        _last_synced_at = datetime.now(timezone.utc).isoformat()
         initiative = Initiative(
             id=initiative_id,
             key=issue_key,
@@ -89,7 +91,8 @@ def new_initiative_handler(
             project_id=project_id,
             labels=labels if labels else None,
             components=components if components else None,
-            url=url
+            url=url,
+            _last_synced_at=_last_synced_at
         )
         
         relationships = []
