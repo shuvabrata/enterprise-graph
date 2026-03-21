@@ -131,7 +131,9 @@ class Layer1Loader:
             """
             result = session.run(query1)
             for record in result:
-                print(f"   {record['role']:20} {record['seniority']:10} {record['count']:3}")
+                role = record['role'] if record['role'] is not None else "N/A"
+                seniority = record['seniority'] if record['seniority'] is not None else "N/A"
+                print(f"   {role:20} {seniority:10} {record['count']:3}")
             
             # Query 2: Org hierarchy (sample)
             print("\n2. Org hierarchy (sample - first 10):")
