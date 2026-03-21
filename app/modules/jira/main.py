@@ -8,6 +8,7 @@ and loads them into Neo4j with proper relationships.
 from typing import Any, Dict, Set, List, cast
 
 import json
+import requests
 import os
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -23,20 +24,39 @@ from modules.jira.new_issue_handler import new_issue_handler
 from common.person_cache import PersonCache
 from common.logger import logger
 
-def load_config() -> Dict[str, Any]:
+def load_config_from_server() -> Dict[str, Any]:
+    """Load Jira configuration from API server."""
+    api_server = os.getenv("API_SERVER", "http://host.docker.internal:8000/")
+    config_url = f"{api_server.rstrip('/')}/api/v1/connectors/jira/configs"
+    params = {"include_secrets": "true"}
+
+    logger.info(f"Fetching configuration from {config_url} with params: {params}")
+    try:
+        response = requests.get(config_url, params=params, timeout=10)
+        response.raise_for_status()  # Raises HTTPError for bad responses (4xx or 5xx)
+
+        # The API returns a list, but the app expects {"account": [...]}
+        raw_configs = response.json()
+        return {"account": raw_configs}
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to fetch configuration from server: {e}")
+        raise
+
+
+def load_config_from_file() -> Dict[str, Any]:
     """Load configuration from .config.json file."""
     # Look for config file in the current directory or go up to find it
     config_path = Path(__file__).parent / '.config.json'
     if not config_path.exists():
         # Try parent directories
         config_path = Path(__file__).parent.parent.parent / '.config.json'
-    
+
     if not config_path.exists():
-        raise FileNotFoundError("Could not find .config.json file")
-    
+        raise FileNotFoundError(f"Could not find .config.json file in {Path(__file__).parent} or its parent directories.")
+
     with open(config_path, 'r', encoding='utf-8') as f:
         return cast(Dict[str, Any], json.load(f))
-
 
 def create_jira_connection(config: Dict[str, Any]) -> Jira:
     """Create and return a Jira connection object."""
@@ -338,10 +358,26 @@ def main() -> int:
         logger.info("Jira Integration - Full Data Loader")
         logger.info("=" * 80)
         
-        # Load configuration
-        logger.info("\nLoading configuration...")
-        config = load_config()
-        
+        config: Dict[str, Any]
+        config_source = os.getenv("CONFIGURATION_SOURCE", "FILE").upper()
+
+        try:
+            if config_source == "SERVER":
+                logger.info("\nLoading configuration from SERVER...")
+                config = load_config_from_server()
+            else:
+                logger.info("\nLoading configuration from FILE...")
+                config = load_config_from_file()
+
+        except FileNotFoundError as e:
+            logger.error(f"Configuration file not found. Please create .config.json or set CONFIGURATION_SOURCE=SERVER.")
+            logger.exception(e)
+            return 1
+        except Exception as e:
+            logger.error(f"A critical error occurred during configuration loading: {e}")
+            logger.exception(e)
+            return 1
+
         # Get lookback days from environment variable
         lookback_days = int(os.getenv('JIRA_LOOKBACK_DAYS', '90'))
         logger.info(f"Using lookback period: {lookback_days} days")
@@ -654,4 +690,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     exit(main())
-
