@@ -2,13 +2,16 @@
 """
 GitHub Repository Information Fetcher
 
-Loads repository URLs from .config.json and fetches repository properties
+Loads repository URLs from .config.json or a config server and fetches repository properties
 using the GitHub API.
 """
 
 import json
 import os
 from pathlib import Path
+from typing import Dict, List, Tuple, Any, cast
+
+import requests
 from neo4j import GraphDatabase
 from db.models import (
     create_constraints
@@ -19,11 +22,41 @@ from modules.github.utils import get_github_client
 from common.config_validator import validate_config
 
 from common.logger import logger
-from typing import Dict, List, Tuple, Union, Any
 
-from typing import cast
 
-def load_config() -> Dict[str, Any]:
+def load_config_from_server() -> Dict[str, Any]:
+    """Load repository configuration from API server."""
+    api_server = os.getenv("API_SERVER", "http://host.docker.internal:8000/")
+    config_url = f"{api_server.rstrip('/')}/api/v1/connectors/github/configs"
+    params = {"include_secrets": "true"}
+
+    logger.info(f"Fetching configuration from {config_url} with params: {params}")
+    try:
+        response = requests.get(config_url, params=params, timeout=10)
+        response.raise_for_status()  # Raises HTTPError for bad responses (4xx or 5xx)
+
+        raw_configs = response.json()
+
+        # The API returns a list, but the app expects {"repos": [...]}
+        # Also, the token key is "access_token" in API, but "token" is expected.
+        transformed_configs = []
+        for raw_config in raw_configs:
+            config_item = {
+                "url": raw_config.get("url"),
+                "access_token": raw_config.get("access_token"),
+                "branch_name_patterns": raw_config.get("branch_name_patterns", []),
+                "extraction_sources": raw_config.get("extraction_sources", []),
+            }
+            transformed_configs.append(config_item)
+
+        return {"repos": transformed_configs}
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to fetch configuration from server: {e}")
+        raise
+
+
+def load_config_from_file() -> Dict[str, Any]:
     """Load repository configuration from .config.json"""
     config_path = Path(__file__).parent / ".config.json"
     with open(config_path, 'r', encoding='utf-8') as f:
@@ -62,12 +95,36 @@ def main() -> None:
     logger.info("GitHub Repository Information Fetcher")
     logger.info("=" * 50)
 
-    # Validate configuration before processing
-    config_path = Path(__file__).parent / ".config.json"
-    if not validate_config(str(config_path), config_type="github"):
-        logger.error("Configuration validation failed. Please fix errors and try again.")
-        return
+    config: Dict[str, Any]
+    config_source = os.getenv("CONFIGURATION_SOURCE", "FILE").upper()
 
+    try:
+        if config_source == "SERVER":
+            logger.info("Configuration source: SERVER")
+            config = load_config_from_server()
+            # Skipping file-based validation for server config
+            logger.info("Skipping file-based validation for server-provided configuration.")
+        else:
+            logger.info("Configuration source: FILE")
+            config_path = Path(__file__).parent / ".config.json"
+
+            # Validate configuration file exists and is valid
+            if not config_path.is_file():
+                logger.error(f"Configuration file not found: {config_path}")
+                logger.error("Please create it from the .config.example.json template or set CONFIGURATION_SOURCE=SERVER.")
+                return
+
+            if not validate_config(str(config_path), config_type="github"):
+                logger.error("Configuration validation failed. Please fix errors and try again.")
+                return
+
+            config = load_config_from_file()
+
+    except Exception as e:
+        logger.error(f"A critical error occurred during configuration loading: {e}")
+        logger.exception(e)
+        return
+        
     # Initialize Neo4j connection
     neo4j_uri: str = os.getenv('NEO4J_URI', 'bolt://localhost:7687')
     neo4j_user: str = os.getenv('NEO4J_USERNAME', 'neo4j')
@@ -87,9 +144,7 @@ def main() -> None:
             create_constraints(session, layers=[1, 5, 6, 7, 8])
         logger.info("✓ Constraints created\n")
 
-        # Load configuration
-        config: Dict[str, Any] = load_config()
-        logger.info(f"Loaded {len(config['repos'])} repositories from config\n")
+        logger.info(f"Loaded {len(config.get('repos', []))} repositories from config\n")
 
         # Counters for tracking
         repos_processed: int = 0
@@ -98,7 +153,7 @@ def main() -> None:
         # Create a session for the entire operation
         with driver.session() as session:
             # Process each repository
-            for idx, repo_config in enumerate(config['repos'], 1):
+            for idx, repo_config in enumerate(config.get('repos', []), 1):
                 repo_url: str = repo_config['url']
                 logger.info(f"\n[{idx}] Processing: {repo_url}")
                 logger.info("-" * 50)
