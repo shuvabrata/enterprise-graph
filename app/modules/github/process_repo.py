@@ -24,11 +24,11 @@ def flush_person_cache(person_cache: PersonCache, session: Session) -> None:
         logger.info(f"    Warning: Could not flush PersonCache - {str(e)}")
 
 
-def process_repo(repo: Repository, session: Session, repo_config: Optional[Dict[str, Any]] = None) -> None:
+def process_repo(repo: Repository, session: Session, repo_config: Optional[Dict[str, Any]] = None, github_obj=None) -> None:
     with LogContext(request_id=repo.full_name):
-        return process_repo_(repo, session, repo_config)
+        return process_repo_(repo, session, repo_config, github_obj)
 
-def process_repo_(repo: Repository, session: Session, repo_config: Optional[Dict[str, Any]] = None) -> None:
+def process_repo_(repo: Repository, session: Session, repo_config: Optional[Dict[str, Any]] = None, github_obj=None) -> None:
     """Process repository: create repo node, collaborators, teams, branches, and commits in Neo4j.
     
     Args:
@@ -59,6 +59,6 @@ def process_repo_(repo: Repository, session: Session, repo_config: Optional[Dict
         # so we should only process commits if there are new commits to process
         process_commits(repo, session, repo_id, default_branch_id, branch_patterns, extraction_sources, person_cache)
         
-    process_pull_requests(repo, session, repo_id, repo, person_cache)
+    process_pull_requests(repo, session, repo_id, repo, person_cache, github_obj=github_obj)
     flush_person_cache(person_cache, session)
     update__last_synced_at(session, repo_id)

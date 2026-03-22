@@ -174,7 +174,7 @@ def main() -> None:
                             try:
                                 # Process repository (creates nodes and relationships)
                                 logger.info(f"\n  ↳ {repo.name}")
-                                process_repo(repo, session, repo_config)
+                                process_repo(repo, session, repo_config, github_obj=client)
                                 repos_processed += 1
 
                             except Exception as e:
@@ -190,7 +190,7 @@ def main() -> None:
                         repo = client.get_repo(f"{owner}/{repo_name}")
 
                         # Process repository (creates nodes and relationships)
-                        process_repo(repo, session, repo_config)
+                        process_repo(repo, session, repo_config, github_obj=client)
                         repos_processed += 1
 
                 except Exception as e:
