@@ -118,8 +118,17 @@ def get_or_create_pr_author(
         
         # Get user details
         github_login = pr_user.login
-        github_name = pr_user.name if hasattr(pr_user, 'name') and pr_user.name else github_login
-        github_email = pr_user.email if hasattr(pr_user, 'email') and pr_user.email else None
+        # Defensive: avoid triggering PyGithub API errors if user is deleted or inaccessible
+        try:
+            github_name = pr_user.name or github_login
+        except Exception:
+            logger.warning(f"      Warning: Could not fetch name for PR author {github_login}, using login as name")
+            github_name = github_login
+        try:
+            github_email = pr_user.email if pr_user.email else None
+        except Exception:
+            logger.warning(f"      Warning: Could not fetch email for PR author {github_login}, using None as email")
+            github_email = None
         # Normalize email to lowercase immediately at source for case-insensitive identity resolution
         github_email = github_email.lower() if github_email else None
         
