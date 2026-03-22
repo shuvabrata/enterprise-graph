@@ -31,10 +31,10 @@ def process_pull_requests(
         use_search_mode = os.getenv('PR_FETCH_MODE', 'SEARCH').upper() == 'SEARCH'
         all_prs = []
         if use_search_mode:
-            logger.info(f"    [SEARCH MODE] Using GitHub Search API for PRs updated since {since_date.date()}...")
+            logger.info(f"    [SEARCH MODE] Using GitHub Search API for CLOSED PRs updated since {since_date.date()}...")
             if github_obj is None:
                 raise RuntimeError("github_obj must be provided for SEARCH mode.")
-            query = f"repo:{repo_obj.full_name} is:pr updated:>={since_date.date()}"
+            query = f"repo:{repo_obj.full_name} is:pr is:closed updated:>={since_date.date()}"
             def search_prs():
                 try:
                     return list(github_obj.search_issues(query=query, sort='updated', order='desc'))
@@ -54,12 +54,12 @@ def process_pull_requests(
             all_prs = converted_prs
         else:
             all_prs = retry_with_backoff(
-                lambda: list(repo_obj.get_pulls(state='all', sort='updated', direction='desc'))
+                lambda: list(repo_obj.get_pulls(state='closed', sort='updated', direction='desc'))
             )
 
         recent_prs = [pr for pr in all_prs if pr.updated_at >= since_date]
         existing_pr_numbers = get_fully_synced_pr_numbers(session, repo_id)
-        prs_to_process = [pr for pr in recent_prs if pr.number not in existing_pr_numbers or pr.state == 'open']
+        prs_to_process = [pr for pr in recent_prs if pr.number not in existing_pr_numbers]
         if existing_pr_numbers:
             logger.info(f"    Found {len(recent_prs)} recent PRs, {len(existing_pr_numbers)} already processed (closed/merged), {len(prs_to_process)} to process")
         else:
