@@ -354,8 +354,8 @@ class Issue:
     priority: str
     status: str
     story_points: int
-    created_at: str   # ISO format string (YYYY-MM-DD)
-    updated_at: Optional[str] = None  # ISO format string (YYYY-MM-DD)
+    created_at: str   # ISO format datetime string
+    updated_at: Optional[str] = None  # ISO format datetime string
     url: Optional[str] = None
     _last_synced_at: Optional[str] = None  # ISO format datetime string - tracks last successful sync
     
@@ -548,7 +548,7 @@ class Commit:
             id="commit_1",
             sha="a1b2c3d4e5f6789...",
             message="[PROJ-123] Fix authentication bug",
-            timestamp="2026-01-15T14:30:00",
+            created_at="2026-01-15T14:30:00",
             additions=45,
             deletions=12,
             files_changed=3
@@ -583,7 +583,7 @@ class Commit:
     id: str
     sha: str
     message: str
-    timestamp: str   # ISO format datetime string
+    created_at: str  # ISO format datetime string
     additions: int
     deletions: int
     files_changed: int
@@ -601,7 +601,7 @@ class Commit:
         print(f"{'='*60}")
         print(f"  ID:            {self.id}")
         print(f"  SHA:           {self.sha[:10]}..." if len(self.sha) > 10 else f"  SHA:           {self.sha}")
-        print(f"  Timestamp:     {self.timestamp}")
+        print(f"  Created At:    {self.created_at}")
         print(f"  Additions:     {self.additions}")
         print(f"  Deletions:     {self.deletions}")
         print(f"  Files Changed: {self.files_changed}")
@@ -1246,9 +1246,9 @@ def merge_issue(session: Session, issue: Issue, relationships: Optional[List[Rel
     
     # Only set created_at/updated_at if it's not empty
     if _has_value(props, 'created_at'):
-        set_clauses.append("i.created_at = date($created_at)")
+        set_clauses.append("i.created_at = datetime($created_at)")
     if _has_value(props, 'updated_at'):
-        set_clauses.append("i.updated_at = date($updated_at)")
+        set_clauses.append("i.updated_at = datetime($updated_at)")
     if _has_value(props, 'url'):
         set_clauses.append("i.url = $url")
     # Only set _last_synced_at if provided (for incremental sync tracking)
@@ -1460,8 +1460,8 @@ def merge_commit(session: Session, commit: Commit, relationships: Optional[List[
         set_clauses.append("c.sha = $sha")
     if _has_value(props, 'message'):
         set_clauses.append("c.message = $message")
-    if _has_value(props, 'timestamp'):
-        set_clauses.append("c.timestamp = datetime($timestamp)")
+    if _has_value(props, 'created_at'):
+        set_clauses.append("c.created_at = datetime($created_at)")
     if _has_value(props, 'additions'):
         set_clauses.append("c.additions = $additions")
     if _has_value(props, 'deletions'):

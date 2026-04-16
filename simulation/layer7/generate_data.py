@@ -304,7 +304,7 @@ def generate_commits(engineers, branch_repo_pairs, all_files, issues):
             "id": commit_id,
             "sha": generate_commit_sha(),
             "message": message,
-            "timestamp": timestamp.isoformat(),
+            "created_at": timestamp.isoformat(),
             "additions": additions,
             "deletions": deletions,
             "files_changed": len(modified_files),
@@ -315,8 +315,8 @@ def generate_commits(engineers, branch_repo_pairs, all_files, issues):
             "issue_key": issue_key
         })
     
-    # Sort by timestamp
-    commits.sort(key=lambda c: c["timestamp"])
+    # Sort by created_at
+    commits.sort(key=lambda c: c["created_at"])
     
     return commits
 

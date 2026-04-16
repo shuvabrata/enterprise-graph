@@ -57,8 +57,8 @@ def new_issue_handler(
         priority = priority_obj.get('name', 'None') if priority_obj else 'None'
         status_obj = fields.get('status', {})
         status = status_obj.get('name', 'Unknown') if status_obj else 'Unknown'
-        created = fields.get('created', '')[:10] if fields.get('created') else ''
-        updated_at = fields.get('updated', '')[:10] if fields.get('updated') else ''
+        created = fields.get('created', '') if fields.get('created') else ''
+        updated_at = fields.get('updated', '') if fields.get('updated') else ''
         
         # Extract story points - field name varies by Jira configuration
         # Common field names: customfield_10016, story_points, Story Points

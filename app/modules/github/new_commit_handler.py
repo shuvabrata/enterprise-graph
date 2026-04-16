@@ -329,7 +329,7 @@ def new_commit_handler(
             id=commit_id,
             sha=commit_sha,
             message=commit_message,
-            timestamp=commit_timestamp,
+            created_at=commit_timestamp,
             additions=additions,
             deletions=deletions,
             files_changed=total_files,

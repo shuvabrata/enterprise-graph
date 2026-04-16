@@ -43,7 +43,7 @@ def load_commits_to_neo4j():
                     id=commit_data['id'],
                     sha=commit_data['sha'],
                     message=commit_data['message'],
-                    timestamp=commit_data['timestamp'],
+                    created_at=commit_data['created_at'],
                     additions=commit_data['additions'],
                     deletions=commit_data['deletions'],
                     files_changed=commit_data['files_changed']

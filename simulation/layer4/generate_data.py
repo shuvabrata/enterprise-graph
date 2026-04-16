@@ -180,8 +180,8 @@ def generate_story_for_epic(epic: Dict, epic_index: int, story_num: int,
         "priority": weighted_choice(PRIORITY_DISTRIBUTION),
         "status": weighted_choice(STATUS_DISTRIBUTION),
         "story_points": random.choice(STORY_POINTS),
-        "created_at": created_at.strftime("%Y-%m-%d"),
-        "updated_at": created_at.strftime("%Y-%m-%d"),
+        "created_at": created_at.isoformat(),
+        "updated_at": created_at.isoformat(),
         "epic_id": epic['id'],
         "assignee_id": assignee['id'],
         "reporter_id": reporter['id'],
@@ -232,8 +232,8 @@ def generate_bugs(stories: List[Dict], people: List[Dict]) -> List[Dict[str, Any
     for idx, story in enumerate(story_bugs, start=1):
         epic_prefix = story['key'].split('-')[0]
         bug_key = f"BUG-{idx}"
-        created_at_str = (datetime.strptime(story['created_at'], "%Y-%m-%d") +
-                          timedelta(days=random.randint(10, 30))).strftime("%Y-%m-%d")
+        created_at_str = (datetime.fromisoformat(story['created_at']) +
+                          timedelta(days=random.randint(10, 30))).isoformat()
         
         bug = {
             "id": f"issue_{bug_key.lower().replace('-', '_')}",
@@ -270,7 +270,7 @@ def generate_bugs(stories: List[Dict], people: List[Dict]) -> List[Dict[str, Any
         # Random epic for context
         epic = random.choice([s['epic_id'] for s in stories])
         
-        created_at_str = (datetime.now() - timedelta(days=random.randint(5, 60))).strftime("%Y-%m-%d")
+        created_at_str = (datetime.now() - timedelta(days=random.randint(5, 60))).isoformat()
         bug = {
             "id": f"issue_{bug_key.lower().replace('-', '_')}",
             "key": bug_key,
@@ -319,7 +319,7 @@ def generate_tasks(epics: List[Dict], people: List[Dict]) -> List[Dict[str, Any]
         
         epic = random.choice(epics)
         
-        created_at_str = (datetime.now() - timedelta(days=random.randint(10, 45))).strftime("%Y-%m-%d")
+        created_at_str = (datetime.now() - timedelta(days=random.randint(10, 45))).isoformat()
         task = {
             "id": f"issue_{task_key.lower().replace('-', '_')}",
             "key": task_key,
