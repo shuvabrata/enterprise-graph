@@ -163,9 +163,17 @@ def main():
             commits_by_branch[branch_id].append(commit_id)
     
     # Sort commits by timestamp for sequential PR assignment
+    def get_commit_datetime(commit):
+        """Return commit datetime from current or legacy commit date fields."""
+        commit_time = commit.get("created_at") or commit.get("timestamp")
+        if not commit_time:
+            # Keep generation resilient if upstream commit data is incomplete.
+            return datetime.now()
+        return datetime.fromisoformat(commit_time)
+
     commit_timestamps = {}
     for commit in commits:
-        commit_timestamps[commit["id"]] = datetime.fromisoformat(commit["timestamp"])
+        commit_timestamps[commit["id"]] = get_commit_datetime(commit)
     
     print(f"  - Loaded {len(people)} people")
     print(f"  - Loaded {len(branches)} branches")
@@ -271,7 +279,7 @@ def main():
                 # Use first commit timestamp as base
                 first_commit = next((c for c in commits if c["id"] == pr_commit_ids[0]), None)
                 if first_commit:
-                    base_time = datetime.fromisoformat(first_commit["timestamp"])
+                    base_time = get_commit_datetime(first_commit)
                 else:
                     base_time = datetime.now() - timedelta(days=random.randint(30, 90))
             else:
