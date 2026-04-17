@@ -461,10 +461,25 @@ def main():
     
     # Statistics
     print("📈 Statistics:")
-    print(f"   • Commits with Jira refs: {references} ({references/len(commits)*100:.1f}%)")
-    print(f"   • Avg files per commit: {sum(c['files_changed'] for c in commits) / len(commits):.1f}")
-    print(f"   • Avg additions per commit: {sum(c['additions'] for c in commits) / len(commits):.0f}")
-    print(f"   • Date range: {commits[0]['timestamp'][:10]} to {commits[-1]['timestamp'][:10]}")
+    if commits:
+        print(
+            f"   • Commits with Jira refs: {references} "
+            f"({references / len(commits) * 100:.1f}%)"
+        )
+        print(
+            "   • Avg files per commit: "
+            f"{sum(c['files_changed'] for c in commits) / len(commits):.1f}"
+        )
+        print(
+            "   • Avg additions per commit: "
+            f"{sum(c['additions'] for c in commits) / len(commits):.0f}"
+        )
+        print(
+            f"   • Date range: {commits[0]['created_at'][:10]} "
+            f"to {commits[-1]['created_at'][:10]}"
+        )
+    else:
+        print("   • No commits generated")
 
 
 if __name__ == "__main__":
