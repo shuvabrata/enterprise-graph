@@ -168,7 +168,9 @@ def main() -> None:
                         owner, _ = parse_repo_url(repo_url)
                         logger.info(f"Wildcard pattern detected. Fetching all repositories for: {owner}")
 
-                        repos: List[Any] = get_all_repos_for_owner(client, owner)
+                        # Extract filters if provided
+                        filters = repo_config.get('search_filters')
+                        repos: List[Any] = get_all_repos_for_owner(client, owner, filters)
 
                         for repo in repos:
                             try:
