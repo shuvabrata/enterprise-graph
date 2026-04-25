@@ -27,6 +27,7 @@ pytest tests/neo4j_queries/ -v
 |------|---------|
 | Run all tests | `pytest tests/neo4j_queries/ -v` |
 | Run specific domain | `pytest tests/neo4j_queries/test_queries_github.py -v` |
+| Run Person-to-Person | `pytest tests/neo4j_queries/test_queries_person_to_person.py -v` |
 | Run single test | `pytest tests/neo4j_queries/test_queries_people.py::test_team_distribution -v` |
 | Stop on first failure | `pytest tests/neo4j_queries/ -x` |
 

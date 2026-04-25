@@ -8,6 +8,7 @@ This framework automates the execution and validation of 60+ Cypher queries acro
 - **People & Identity**: Organizational structure and identity mappings
 - **GitHub**: Repositories, branches, commits, and pull requests
 - **Jira**: Projects, initiatives, epics, issues, and sprints
+- **Person-to-Person**: Deep-dive collaboration metrics between individuals
 - **Cross-Domain**: Analytics spanning multiple data sources
 - **Schema**: Database structure and constraints
 
@@ -59,6 +60,7 @@ pytest tests/neo4j_queries/test_queries_people.py -v      # People & Identity
 pytest tests/neo4j_queries/test_queries_github.py -v      # GitHub
 pytest tests/neo4j_queries/test_queries_jira.py -v        # Jira
 pytest tests/neo4j_queries/test_queries_cross_domain.py -v # Cross-Domain
+pytest tests/neo4j_queries/test_queries_person_to_person.py -v # Person-to-Person
 pytest tests/neo4j_queries/test_queries_schema.py -v      # Schema
 ```
 

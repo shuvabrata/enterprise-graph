@@ -367,3 +367,73 @@ queries:
     expectations:
       min_rows: 0  # May not have Person nodes
       max_time_ms: 200
+
+  # ============================================================================
+  # Person-to-Person Analytics
+  # ============================================================================
+  
+  - name: "Shortest Path Collaboration"
+    section: "Person-to-Person"
+    expectations:
+      min_rows: 0
+      max_time_ms: 3000
+  
+  - name: "All Shortest Paths Collaboration"
+    section: "Person-to-Person"
+    expectations:
+      min_rows: 0
+      max_time_ms: 3000
+  
+  - name: "Shortest Path Through Code"
+    section: "Person-to-Person"
+    expectations:
+      min_rows: 0
+      max_time_ms: 3000
+  
+  - name: "Shortest Path Through Work Items"
+    section: "Person-to-Person"
+    expectations:
+      min_rows: 0
+      max_time_ms: 3000
+  
+  - name: "Shortest Path Via Specific Node"
+    section: "Person-to-Person"
+    expectations:
+      min_rows: 0
+      max_time_ms: 4000
+  
+  - name: "Direct Code Reviews"
+    section: "Person-to-Person"
+    expectations:
+      min_rows: 0
+      max_time_ms: 1500
+  
+  - name: "Shared Jira Work"
+    section: "Person-to-Person"
+    expectations:
+      min_rows: 0
+      max_time_ms: 1500
+  
+  - name: "Shared Code Hotspots"
+    section: "Person-to-Person"
+    expectations:
+      min_rows: 0
+      max_time_ms: 2000
+  
+  - name: "Shared Repositories"
+    section: "Person-to-Person"
+    expectations:
+      min_rows: 0
+      max_time_ms: 1000
+  
+  - name: "Shared Teams"
+    section: "Person-to-Person"
+    expectations:
+      min_rows: 0
+      max_time_ms: 500
+  
+  - name: "Org Chart Relationship"
+    section: "Person-to-Person"
+    expectations:
+      min_rows: 0
+      max_time_ms: 1000
