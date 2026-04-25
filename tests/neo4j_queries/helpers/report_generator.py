@@ -12,6 +12,16 @@ from .models import QueryResult, TestRunSummary
 
 class ReportGenerator:
     """Generate various report formats from test results."""
+
+    def _get_status_icon(self, status: str) -> str:
+        """Get emoji icon for status."""
+        icons = {
+            "PASS": "✅",
+            "WARNING": "⚠️ ",
+            "CONCERN": "🔶",
+            "FAIL": "❌"
+        }
+        return icons.get(status, "❓")
     
     def __init__(self, results_dir: Path = None):
         """Initialize report generator."""
@@ -40,12 +50,12 @@ class ReportGenerator:
         json_file = self.results_dir / f"test_results_{timestamp}.json"
         
         with open(json_file, 'w') as f:
-            json.dump(report, f, indent=2)
+            json.dump(report, f, indent=2, default=str)
         
         # Also save as latest.json
         latest_file = self.results_dir / "latest.json"
         with open(latest_file, 'w') as f:
-            json.dump(report, f, indent=2)
+            json.dump(report, f, indent=2, default=str)
         
         return json_file
     
@@ -157,12 +167,12 @@ class ReportGenerator:
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         html_file = self.results_dir / f"test_results_{timestamp}.html"
         
-        with open(html_file, 'w') as f:
+        with open(html_file, 'w', encoding='utf-8') as f:
             f.write(html)
         
         # Also save as latest.html
         latest_file = self.results_dir / "latest.html"
-        with open(latest_file, 'w') as f:
+        with open(latest_file, 'w', encoding='utf-8') as f:
             f.write(html)
         
         return html_file
@@ -187,25 +197,13 @@ class ReportGenerator:
         # Calculate average execution time
         if results:
             summary.avg_execution_time_ms = sum(r.execution_time_ms for r in results) / len(results)
-        
         # Find slowest queries
         sorted_by_time = sorted(results, key=lambda r: r.execution_time_ms, reverse=True)
         summary.slowest_queries = [
             {"name": r.query_name, "time_ms": r.execution_time_ms}
             for r in sorted_by_time[:10]
         ]
-        
         return summary
-    
-    def _get_status_icon(self, status: str) -> str:
-        """Get emoji icon for status."""
-        icons = {
-            "PASS": "✅",
-            "WARNING": "⚠️ ",
-            "CONCERN": "🔶",
-            "FAIL": "❌"
-        }
-        return icons.get(status, "❓")
     
     def _build_html(self, summary: TestRunSummary, results: List[QueryResult]) -> str:
         """Build HTML report."""
@@ -220,6 +218,7 @@ class ReportGenerator:
         html = f"""<!DOCTYPE html>
 <html>
 <head>
+    <meta charset=\"UTF-8\">
     <title>Neo4j Query Validation Report</title>
     <style>
         body {{ font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }}
@@ -344,11 +343,9 @@ class ReportGenerator:
                         for row in r.result_rows:
                             html += "<tr>"
                             for val in row.values():
-                                # Handle None and format values
+                                # Always render as string for graph/path results
                                 display_val = str(val) if val is not None else "<em>NULL</em>"
-                                if len(display_val) > 50:
-                                    display_val = display_val[:50] + "..."
-                                html += f"<td>{display_val}</td>"
+                                html += f"<td style='font-family:monospace;font-size:0.9em'>{display_val}</td>"
                             html += "</tr>"
                         html += "</table>"
                     else:
