@@ -32,9 +32,25 @@ def load_catalog_queries():
             
         for yaml_file in ns_dir.glob("*.yaml"):
             with open(yaml_file, "r") as yf:
-                query_def = yaml.safe_load(yf)
-                query_def["section"] = section_name
-                queries.append(query_def)
+                raw_def = yaml.safe_load(yf)
+                
+                # Expand nested queries
+                if "queries" in raw_def:
+                    for q_type, q_text in raw_def["queries"].items():
+                        query_def = raw_def.copy()
+                        query_def["section"] = section_name
+                        query_def["query_type"] = q_type
+                        query_def["query_text"] = q_text
+                        query_def["test_name"] = f"{raw_def.get('name')} ({q_type})"
+                        queries.append(query_def)
+                elif "query" in raw_def:
+                    # Fallback
+                    query_def = raw_def.copy()
+                    query_def["section"] = section_name
+                    query_def["query_type"] = "tabular"
+                    query_def["query_text"] = raw_def["query"]
+                    query_def["test_name"] = f"{raw_def.get('name')} (tabular)"
+                    queries.append(query_def)
                 
     return queries
 
@@ -42,7 +58,7 @@ def load_catalog_queries():
 CATALOG_QUERIES = load_catalog_queries()
 
 
-@pytest.mark.parametrize("query_def", CATALOG_QUERIES, ids=lambda q: q["name"])
+@pytest.mark.parametrize("query_def", CATALOG_QUERIES, ids=lambda q: q["test_name"])
 def test_catalog_query(query_def, query_executor, expectations, track_result):
     """Dynamically execute and validate a catalog query."""
     params = {}
@@ -63,10 +79,10 @@ def test_catalog_query(query_def, query_executor, expectations, track_result):
         
     # Execute through the established framework
     result = query_executor.execute(
-        query_name=query_def["name"],
+        query_name=query_def["test_name"],
         section=query_def["section"],
-        query_text=query_def["query"],
-        expectation=expectations.get(query_def["name"]),
+        query_text=query_def["query_text"],
+        expectation=expectations.get(query_def.get("name")),
         parameters=params  # NOTE: Ensure QueryExecutor accepts this argument!
     )
     
