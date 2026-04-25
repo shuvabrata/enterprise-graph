@@ -1,0 +1,9 @@
+"name": |-
+  Hotspot Files
+"description": |-
+  Files with most modifications.
+"query": |-
+  MATCH (f:File)<-[:MODIFIES]-(c:Commit)
+      RETURN f.path as path, f.language as lang, count(c) as modifications
+      ORDER BY modifications DESC
+      LIMIT 10

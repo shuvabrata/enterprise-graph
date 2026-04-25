@@ -1,13 +1,14 @@
 # Neo4j Query Testing Framework
 
-Automated testing framework for validating Neo4j Cypher queries with configurable expectations, multiple report formats, and comprehensive metrics tracking.
+A dynamic, YAML-driven testing framework for validating Neo4j Cypher queries with configurable expectations, multiple report formats, and comprehensive metrics tracking.
 
 ## 📋 Overview
 
-This framework automates the execution and validation of 60+ Cypher queries across 5 domains:
+This framework automates the execution and validation of 60+ Cypher queries across 6 domains:
 - **People & Identity**: Organizational structure and identity mappings
 - **GitHub**: Repositories, branches, commits, and pull requests
 - **Jira**: Projects, initiatives, epics, issues, and sprints
+- **Person-to-Person**: Deep-dive collaboration metrics between individuals
 - **Cross-Domain**: Analytics spanning multiple data sources
 - **Schema**: Database structure and constraints
 
@@ -50,7 +51,7 @@ See [QUICK_START.md](QUICK_START.md) for 2-minute setup guide.
 
 ### All Tests
 ```bash
-pytest tests/neo4j_queries/ -v
+pytest tests/neo4j_queries/test_catalog_queries.py -v
 ```
 
 ### By Domain
@@ -59,6 +60,7 @@ pytest tests/neo4j_queries/test_queries_people.py -v      # People & Identity
 pytest tests/neo4j_queries/test_queries_github.py -v      # GitHub
 pytest tests/neo4j_queries/test_queries_jira.py -v        # Jira
 pytest tests/neo4j_queries/test_queries_cross_domain.py -v # Cross-Domain
+pytest tests/neo4j_queries/test_queries_person_to_person.py -v # Person-to-Person
 pytest tests/neo4j_queries/test_queries_schema.py -v      # Schema
 ```
 

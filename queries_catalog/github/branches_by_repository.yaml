@@ -1,0 +1,8 @@
+"name": |-
+  Branches by Repository
+"description": |-
+  View all branches by repository.
+"query": |-
+  MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
+      RETURN r.name, collect(b.name) as branches
+      ORDER BY r.name

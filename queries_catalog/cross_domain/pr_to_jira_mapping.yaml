@@ -1,0 +1,10 @@
+"name": |-
+  PR to Jira Mapping
+"description": |-
+  PRs linked to Jira issues via commits.
+"query": |-
+  MATCH (pr:PullRequest)-[:INCLUDES]->(c:Commit)-[:REFERENCES]->(i:Issue)
+      RETURN pr.number as pr_number, pr.title,
+             collect(DISTINCT i.key) as jira_issues,
+             size(collect(DISTINCT i.key)) as issue_count
+      ORDER BY issue_count DESC

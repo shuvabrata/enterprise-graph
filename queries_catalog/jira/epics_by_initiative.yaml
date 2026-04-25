@@ -1,0 +1,8 @@
+"name": |-
+  Epics by Initiative
+"description": |-
+  Epics grouped by initiative.
+"query": |-
+  MATCH (e:Epic)-[:PART_OF]->(i:Initiative)
+      RETURN i.key, i.summary, collect(e.key) as epics
+      ORDER BY i.key

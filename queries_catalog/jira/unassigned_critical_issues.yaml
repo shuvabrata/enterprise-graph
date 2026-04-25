@@ -1,0 +1,8 @@
+"name": |-
+  Unassigned Critical Issues
+"description": |-
+  Critical issues without assignees - Data Quality check.
+"query": |-
+  MATCH (i:Issue)
+      WHERE i.priority = 'Critical' AND NOT exists((i)-[:ASSIGNED_TO]-())
+      RETURN i.key, i.summary, i.status

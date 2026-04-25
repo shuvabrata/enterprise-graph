@@ -1,0 +1,8 @@
+"name": |-
+  Initiatives with Assignees
+"description": |-
+  Initiatives with assignees and reporters.
+"query": "MATCH (i:Initiative)-[:ASSIGNED_TO]-(assignee:Person),\n          (i)-[:REPORTED_BY]-(reporter:Person)\n\
+  \    RETURN i.key, i.summary, \n           assignee.name as assignee, assignee.title\
+  \ as assignee_title,\n           reporter.name as reporter, reporter.title as reporter_title,\n\
+  \           i.status\n    ORDER BY i.key"

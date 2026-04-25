@@ -1,0 +1,13 @@
+"name": |-
+  Code Churn
+"description": |-
+  Files with most changes (additions + deletions).
+"query": |-
+  MATCH (f:File)<-[m:MODIFIES]-(c:Commit)
+      RETURN f.path as file, f.language as language,
+             sum(m.additions) as total_additions,
+             sum(m.deletions) as total_deletions,
+             sum(m.additions + m.deletions) as total_churn,
+             count(c) as num_commits
+      ORDER BY total_churn DESC
+      LIMIT 10

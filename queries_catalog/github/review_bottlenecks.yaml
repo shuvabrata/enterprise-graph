@@ -1,0 +1,11 @@
+"name": |-
+  Review Bottlenecks
+"description": |-
+  Review requests not yet completed - Data Quality check.
+"query": |-
+  MATCH (pr:PullRequest)-[:REQUESTED_REVIEWER]->(p:Person)
+      WHERE NOT (pr)-[:REVIEWED_BY]->(p)
+      WITH p, count(pr) as pending_reviews
+      RETURN p.name as reviewer, pending_reviews
+      ORDER BY pending_reviews DESC
+      LIMIT 10

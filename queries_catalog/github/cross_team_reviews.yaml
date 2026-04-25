@@ -1,0 +1,12 @@
+"name": |-
+  Cross-Team Reviews
+"description": |-
+  Cross-team code review collaboration.
+"query": |-
+  MATCH (pr:PullRequest)-[:CREATED_BY]->(author:Person)-[:MEMBER_OF]-(author_team:Team)
+      MATCH (pr)-[:REVIEWED_BY]->(reviewer:Person)-[:MEMBER_OF]-(reviewer_team:Team)
+      WHERE author_team <> reviewer_team
+      RETURN author_team.name as author_team,
+             reviewer_team.name as reviewer_team,
+             count(pr) as cross_team_reviews
+      ORDER BY cross_team_reviews DESC
