@@ -4,3 +4,5 @@
   Issues blocking other issues.
 "query": "MATCH (i:Issue)-[:BLOCKS]->(blocked:Issue)\n    RETURN i.key, i.summary,\
   \ \n           collect(blocked.key) as blocks_issues"
+"tags":
+  - "test"

@@ -9,3 +9,5 @@
       RETURN avg(merge_duration.days) as avg_days_to_merge,
              min(merge_duration.days) as min_days,
              max(merge_duration.days) as max_days
+"tags":
+  - "test"

@@ -10,3 +10,5 @@
              sum(CASE WHEN pr.state = 'merged' THEN 1 ELSE 0 END) as reviewed_and_merged
       ORDER BY reviews_given DESC
       LIMIT 10
+"tags":
+  - "test"

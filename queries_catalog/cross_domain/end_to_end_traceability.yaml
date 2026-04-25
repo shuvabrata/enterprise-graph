@@ -8,3 +8,5 @@
       RETURN init.key as initiative, e.key as epic, i.key as issue,
              c.sha as commit_sha, pr.number as pr_number
       LIMIT 10
+"tags":
+  - "test"

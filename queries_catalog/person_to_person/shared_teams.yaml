@@ -13,3 +13,5 @@ query: |
   RETURN p1.name as person1, 
          p2.name as person2, 
          t.name as shared_team
+"tags":
+  - "test"

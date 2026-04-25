@@ -7,3 +7,5 @@
       WHERE NOT (i)-[:PART_OF]->(:Epic)
       RETURN i.key, i.type, i.summary, i.status
       LIMIT 10
+"tags":
+  - "test"

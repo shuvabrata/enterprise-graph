@@ -6,3 +6,5 @@
   MATCH (bug:Issue {type: 'Bug'})-[:PART_OF]->(e:Epic)
       RETURN e.key, e.summary, count(bug) as bug_count
       ORDER BY bug_count DESC
+"tags":
+  - "test"

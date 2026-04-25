@@ -9,3 +9,5 @@
       RETURN p.name as reviewer, pending_reviews
       ORDER BY pending_reviews DESC
       LIMIT 10
+"tags":
+  - "test"

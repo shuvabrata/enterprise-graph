@@ -11,3 +11,5 @@
              count(c) as num_commits
       ORDER BY total_churn DESC
       LIMIT 10
+"tags":
+  - "test"

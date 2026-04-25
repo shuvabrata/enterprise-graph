@@ -7,3 +7,5 @@
       WHERE b.is_default = true
       RETURN r.name as repo, count(c) as commits
       ORDER BY commits DESC
+"tags":
+  - "test"

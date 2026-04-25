@@ -11,3 +11,5 @@
              count(DISTINCT i) as assigned_issues,
              count(DISTINCT c) as commits
       ORDER BY assigned_issues DESC
+"tags":
+  - "test"

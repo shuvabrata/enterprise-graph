@@ -6,3 +6,5 @@
   \    MATCH (e)-[:PART_OF]->(i:Initiative)\n    RETURN e.key, e.summary, \n     \
   \      owner.name as owner, owner.title as owner_title,\n           team.name as\
   \ team,\n           i.key as initiative,\n           e.status, e.priority"
+"tags":
+  - "test"

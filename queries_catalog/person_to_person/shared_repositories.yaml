@@ -14,3 +14,5 @@ query: |
          c1.permission as person1_permission,
          c2.permission as person2_permission
   ORDER BY repository
+"tags":
+  - "test"

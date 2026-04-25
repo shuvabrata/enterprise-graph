@@ -14,3 +14,5 @@
              count(DISTINCT i) as issues
       ORDER BY commits DESC
       LIMIT 10
+"tags":
+  - "test"

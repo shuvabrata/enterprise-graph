@@ -7,3 +7,5 @@
       WHERE b.is_protected
       RETURN r.name, collect(b.name) as protected_branches
       ORDER BY r.name
+"tags":
+  - "test"

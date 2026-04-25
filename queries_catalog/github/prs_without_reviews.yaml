@@ -8,3 +8,5 @@
       RETURN pr.number, pr.title, pr.state, pr.created_at
       ORDER BY pr.created_at DESC
       LIMIT 10
+"tags":
+  - "test"

@@ -7,3 +7,5 @@
       RETURN p.name as name, p.title as title, count(c) as commits
       ORDER BY commits DESC
       LIMIT 10
+"tags":
+  - "test"

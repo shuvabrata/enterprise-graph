@@ -16,3 +16,5 @@ query: |
          length(path) as degrees_of_separation,
          [n IN nodes(path) | coalesce(n.name, n.key, n.title, labels(n)[0])] as connection_path,
          [r IN relationships(path) | type(r)] as relationship_types
+"tags":
+  - "test"

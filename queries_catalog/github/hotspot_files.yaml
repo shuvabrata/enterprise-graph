@@ -7,3 +7,5 @@
       RETURN f.path as path, f.language as lang, count(c) as modifications
       ORDER BY modifications DESC
       LIMIT 10
+"tags":
+  - "test"

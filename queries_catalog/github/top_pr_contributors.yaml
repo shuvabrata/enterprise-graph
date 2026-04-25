@@ -12,3 +12,5 @@
              sum(pr.deletions) as total_deletions
       ORDER BY prs_created DESC
       LIMIT 10
+"tags":
+  - "test"

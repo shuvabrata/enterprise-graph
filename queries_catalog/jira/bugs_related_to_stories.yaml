@@ -5,3 +5,5 @@
 "query": |-
   MATCH (bug:Issue {type: 'Bug'})-[:RELATES_TO]-(story:Issue {type: 'Story'})
       RETURN bug.key, story.key as story, bug.summary
+"tags":
+  - "test"

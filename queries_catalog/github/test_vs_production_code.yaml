@@ -6,3 +6,5 @@
   \         count(DISTINCT f) as file_count,\n         count(c) as commit_count\n\
   \    RETURN CASE WHEN is_test THEN 'Test Files' ELSE 'Production Files' END as type,\n\
   \           file_count, commit_count"
+"tags":
+  - "test"

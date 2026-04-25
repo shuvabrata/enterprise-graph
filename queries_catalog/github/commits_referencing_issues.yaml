@@ -7,3 +7,5 @@
       RETURN i.key as issue, i.type as type, count(c) as commits
       ORDER BY commits DESC
       LIMIT 10
+"tags":
+  - "test"

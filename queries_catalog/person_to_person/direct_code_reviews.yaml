@@ -17,3 +17,5 @@ query: |
          count(pr) as review_count,
          collect(pr.number)[0..5] as sample_prs
   ORDER BY review_count DESC
+"tags":
+  - "test"

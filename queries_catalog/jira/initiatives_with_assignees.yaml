@@ -6,3 +6,5 @@
   \    RETURN i.key, i.summary, \n           assignee.name as assignee, assignee.title\
   \ as assignee_title,\n           reporter.name as reporter, reporter.title as reporter_title,\n\
   \           i.status\n    ORDER BY i.key"
+"tags":
+  - "test"

@@ -6,3 +6,5 @@
   MATCH ()-[r]->()
       RETURN type(r) as relationship, count(*) as count
       ORDER BY count DESC
+"tags":
+  - "test"

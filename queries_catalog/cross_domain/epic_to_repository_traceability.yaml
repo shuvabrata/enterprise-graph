@@ -9,3 +9,5 @@
              collect(DISTINCT r.name) as repositories,
              count(DISTINCT c) as commits
       ORDER BY commits DESC
+"tags":
+  - "test"

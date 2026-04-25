@@ -5,3 +5,5 @@
 "query": |-
   MATCH (p:Person {name: "Add a valid name here"})-[:MAPS_TO]-(i:IdentityMapping)
       RETURN p.name, i.provider, i.username, i.email
+"tags":
+  - "test"

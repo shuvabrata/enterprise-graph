@@ -6,3 +6,5 @@
   MATCH (p:Person)-[c:COLLABORATOR {permission: 'WRITE'}]-(r:Repository)
       RETURN r.name, collect(p.name) as maintainers
       ORDER BY r.name
+"tags":
+  - "test"

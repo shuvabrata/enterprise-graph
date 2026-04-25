@@ -6,3 +6,5 @@
   MATCH (t:Team)-[c:COLLABORATOR {permission: 'READ'}]-(r:Repository)
       RETURN r.name, collect(t.name) as read_access_teams
       ORDER BY r.name
+"tags":
+  - "test"

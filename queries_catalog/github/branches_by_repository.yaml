@@ -6,3 +6,5 @@
   MATCH (b:Branch)-[:BRANCH_OF]-(r:Repository)
       RETURN r.name, collect(b.name) as branches
       ORDER BY r.name
+"tags":
+  - "test"

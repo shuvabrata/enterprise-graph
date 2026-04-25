@@ -17,3 +17,5 @@ query: |
          count(issue) as issue_count, 
          collect(issue.key)[0..5] as sample_issues
   ORDER BY issue_count DESC
+"tags":
+  - "test"

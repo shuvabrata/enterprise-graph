@@ -10,3 +10,5 @@
              sum(CASE WHEN pr.state = 'open' THEN 1 ELSE 0 END) as open,
              round(sum(CASE WHEN pr.state = 'merged' THEN 1 ELSE 0 END) * 100.0 / count(pr), 1) as merge_rate
       ORDER BY total_prs DESC
+"tags":
+  - "test"

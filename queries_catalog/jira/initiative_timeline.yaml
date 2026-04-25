@@ -6,3 +6,5 @@
   MATCH (i:Initiative)
       RETURN i.summary, i.start_date, i.due_date, i.priority
       ORDER BY i.start_date
+"tags":
+  - "test"

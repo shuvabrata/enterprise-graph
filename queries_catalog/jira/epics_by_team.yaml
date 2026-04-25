@@ -6,3 +6,5 @@
   MATCH (e:Epic)-[:TEAM]-(t:Team)
       RETURN t.name, count(e) as epic_count, collect(e.key) as epics
       ORDER BY epic_count DESC
+"tags":
+  - "test"

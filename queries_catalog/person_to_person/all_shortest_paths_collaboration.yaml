@@ -18,3 +18,5 @@ query: |
          [n IN nodes(path) | coalesce(n.name, n.key, n.title, n.path, labels(n)[0])] as connection_path,
          [r IN relationships(path) | type(r)] as relationship_types
   LIMIT 10
+"tags":
+  - "test"

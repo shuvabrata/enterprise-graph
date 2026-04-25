@@ -5,3 +5,5 @@
 "query": "MATCH (i:Issue)-[:ASSIGNED_TO]-(p:Person)\n    RETURN p.name, p.title, \n\
   \           count(i) as total_issues,\n           sum(i.story_points) as total_points\n\
   \    ORDER BY total_points DESC\n    LIMIT 10"
+"tags":
+  - "test"

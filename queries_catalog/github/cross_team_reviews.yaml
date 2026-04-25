@@ -10,3 +10,5 @@
              reviewer_team.name as reviewer_team,
              count(pr) as cross_team_reviews
       ORDER BY cross_team_reviews DESC
+"tags":
+  - "test"

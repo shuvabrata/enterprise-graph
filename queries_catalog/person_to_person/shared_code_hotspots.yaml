@@ -17,3 +17,5 @@ query: |
          count(DISTINCT c2) as person2_commits,
          count(DISTINCT c1) + count(DISTINCT c2) as total_shared_churn
   ORDER BY total_shared_churn DESC LIMIT 10
+"tags":
+  - "test"
