@@ -22,7 +22,8 @@ class QueryExecutor:
         query_name: str,
         section: str,
         query_text: str,
-        expectation: QueryExpectation = None
+        expectation: QueryExpectation = None,
+        parameters: Dict[str, Any] = None
     ) -> QueryResult:
         """
         Execute a query and capture all metrics.
@@ -32,6 +33,7 @@ class QueryExecutor:
             section: Section/category (e.g., "People & Identity")
             query_text: Cypher query to execute
             expectation: Optional expectations for validation
+            parameters: Optional dictionary of Cypher parameters
             
         Returns:
             QueryResult with all metrics and status
@@ -50,7 +52,7 @@ class QueryExecutor:
         
         try:
             # Execute query with LIMIT
-            records = list(self.session.run(limited_query))
+            records = list(self.session.run(limited_query, **(parameters or {})))
             result.execution_time_ms = (time.perf_counter() - start) * 1000
             result.row_count = len(records)
             

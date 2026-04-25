@@ -1,0 +1,16 @@
+"name": |-
+  Developer Impact Analysis
+"description": |-
+  Developer contributions across all domains.
+"query": |-
+  MATCH (p:Person)
+      OPTIONAL MATCH (p)<-[:CREATED_BY]-(pr:PullRequest)
+      OPTIONAL MATCH (p)-[:AUTHORED_BY]-(c:Commit)
+      OPTIONAL MATCH (p)-[:ASSIGNED_TO]-(i:Issue)
+      RETURN p.name as developer,
+             p.title,
+             count(DISTINCT pr) as prs,
+             count(DISTINCT c) as commits,
+             count(DISTINCT i) as issues
+      ORDER BY commits DESC
+      LIMIT 10

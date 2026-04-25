@@ -1,0 +1,8 @@
+"name": |-
+  Sprint Burndown Data
+"description": |-
+  Sprint progress and burndown metrics.
+"query": "MATCH (s:Sprint)<-[:IN_SPRINT]-(i:Issue)\n    RETURN s.name, \n        \
+  \   sum(i.story_points) as total_points,\n           sum(CASE WHEN i.status = 'Done'\
+  \ THEN i.story_points ELSE 0 END) as completed_points,\n           count(i) as issue_count\n\
+  \    ORDER BY s.name"

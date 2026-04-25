@@ -1,0 +1,10 @@
+"name": |-
+  Issue to Code Linkage
+"description": |-
+  Issues linked to actual code commits.
+"query": |-
+  MATCH (i:Issue)<-[:REFERENCES]-(c:Commit)
+      RETURN i.key, i.type, i.summary,
+             count(c) as commit_count
+      ORDER BY commit_count DESC
+      LIMIT 10

@@ -1,0 +1,12 @@
+"name": |-
+  Most Active Reviewers
+"description": |-
+  Most active code reviewers.
+"query": |-
+  MATCH (pr:PullRequest)-[:REVIEWED_BY]->(p:Person)
+      RETURN p.name as reviewer,
+             p.title as title,
+             count(pr) as reviews_given,
+             sum(CASE WHEN pr.state = 'merged' THEN 1 ELSE 0 END) as reviewed_and_merged
+      ORDER BY reviews_given DESC
+      LIMIT 10

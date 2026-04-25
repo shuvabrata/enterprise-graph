@@ -1,0 +1,6 @@
+"name": |-
+  View All Node Types
+"description": |-
+  Count all nodes by type.
+"query": "MATCH (n) \n    RETURN labels(n)[0] as type, count(*) as count\n    ORDER\
+  \ BY count DESC"

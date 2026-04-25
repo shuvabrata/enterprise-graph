@@ -1,0 +1,8 @@
+"name": |-
+  Teams and Members
+"description": |-
+  View all teams and their members.
+"query": |-
+  MATCH (t:Team)-[:MEMBER_OF]-(p:Person)
+      RETURN t.name, collect(p.name) as members
+      ORDER BY t.name

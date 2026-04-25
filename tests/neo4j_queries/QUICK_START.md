@@ -14,7 +14,7 @@ pip install -r requirements_dev.txt
 
 ## 2. Run Tests
 ```bash
-pytest tests/neo4j_queries/ -v
+pytest tests/neo4j_queries/test_catalog_queries.py -v
 ```
 
 ## 3. View Results

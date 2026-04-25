@@ -1,0 +1,10 @@
+"name": |-
+  PRs Without Reviews
+"description": |-
+  PRs without reviews - Data Quality check.
+"query": |-
+  MATCH (pr:PullRequest)
+      WHERE NOT (pr)-[:REVIEWED_BY]->()
+      RETURN pr.number, pr.title, pr.state, pr.created_at
+      ORDER BY pr.created_at DESC
+      LIMIT 10

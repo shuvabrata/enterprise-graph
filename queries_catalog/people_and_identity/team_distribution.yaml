@@ -1,0 +1,8 @@
+"name": |-
+  Team Distribution
+"description": |-
+  View team sizes.
+"query": |-
+  MATCH (t:Team)-[:MEMBER_OF]-(p:Person)
+      RETURN t.name as team, count(p) as team_size
+      ORDER BY team_size DESC
